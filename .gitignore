@@ -44,3 +44,5 @@ JLinkLog.txt
 
 # Other Files
 .venv/**
+a.out
+*.csv

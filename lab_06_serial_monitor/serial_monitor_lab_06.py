@@ -4,8 +4,9 @@ import click
 import cv2 as cv
 import numpy as np
 from serial import Serial
+import csv
 
-PORT = "COM5"
+PORT = "COM10"
 BAUDRATE = 115200
 
 PREAMBLE = "!START!\r\n"
@@ -41,6 +42,8 @@ COLS = 174
 )
 @click.option("--rle", is_flag=True, default=False, help="Run-Length Encoding")
 @click.option("--quiet", is_flag=True, default=False, help="Print fewer messages")
+@click.option("-w", "--write_to_file", is_flag=True, default=False, 
+        help="Write a full frame to a CSV file and exit")
 def monitor(
     port: str,
     baudrate: int,
@@ -53,6 +56,7 @@ def monitor(
     short_input: bool,
     rle: bool,
     quiet: bool,
+    write_to_file: bool
 ) -> None:
     """
     Display images transferred through serial port. Press 'q' to close.
@@ -146,6 +150,13 @@ def monitor(
             cv.namedWindow("Video Stream", cv.WINDOW_KEEPRATIO)
             cv.imshow("Video Stream", frame)
 
+            if write_to_file and full_update:
+                frame = frame.reshape(-1,)
+                np.savetxt('sample_raw_frame.csv',frame,fmt="%d")
+
+                print("Data written to sample_raw_frame.csv successfully! Shape=", frame.shape)
+                return
+
             # Wait for 'q' to stop the program
             if cv.waitKey(1) == ord("q"):
                 break
@@ -210,7 +221,17 @@ def expand_4b_to_8b_rle(raw_data: bytes) -> bytes:
 
     For example, value 0xFA gets converted to [0xF0, 0x0A]
     """
-    return bytes(val for pix in raw_data for val in [pix & 0xF0, pix & 0x0F])
+    return bytes(val for pix in raw_data for val in [pix & 0x80, pix & 0x0F])
+
+# TODO: stm32 side code for this more efficient 2 bit protocol 
+# (2 bit data, 2 bit count, 2 bit data, 2 bit count)
+def expand_2b_to_8b_rle(raw_data: bytes) -> bytes:
+    """
+    Transform an input of 2-bit encoded RLE values into a string of 8-bit values.
+
+    For example, value 0xFA gets converted to [0b11, 0b11, 0b10, 0b10]
+    """
+    return bytes(val for pix in raw_data for val in [pix & 0xC0, pix & 0x30, pix & 0x0C, pix & 0x03])
 
 
 def decode_rle(raw_data: bytes) -> bytes:
