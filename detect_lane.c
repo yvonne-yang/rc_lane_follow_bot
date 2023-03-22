@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdio.h>
 #include <inttypes.h>
 #include <stdbool.h>
@@ -110,13 +111,14 @@ void trunc_rle() {
 }
 
 // find 2 black regions (lanes) and return middle pixel for each region
-// return 0 if 1 or both not found
+// return 0 if no lanes found
 bool find_black_cols(int i, int* left, int* right){
+    *left = -1, *right = -1;
     int col = 0,black_count=0;
     while (col<IMG_COLS){
         if ((tx_buff[i]&0xF0) == 0x0){ // black
             int count = 0;
-            if (*left==0){ //leftmost
+            if (*left==-1){ //leftmost
                 int start_col = col;
                 count=0;
                 while(col+15<IMG_COLS &&
@@ -151,6 +153,13 @@ bool find_black_cols(int i, int* left, int* right){
         printf("No lanes found\n");
         return 0;
     }
+    // if only found one col, determine left or right lane
+    if (*right == -1){
+        if (*left > IMG_COLS/2){
+            *right = *left;
+            *left = -1;
+        }
+    }
     return 1;
 }
 
@@ -180,7 +189,18 @@ bool find_lanes(int* botleft, int* botright, int*topleft, int*topright){
 
 bool compute_angles(int* botleft, int* botright, int*topleft, int*topright,
         float* angle){
-
+    if (*botleft == -1 || *topleft==-1){ // only see right lane
+        *angle = arctan2(*topright-*botright,LINE_START_ROW-LINE_END_ROW)*180/M_PI;
+    }
+    else if (*botright == -1 || *topright==-1){ // only see left lane
+        *angle = arctan2(*topleft-*botleft,LINE_START_ROW-LINE_END_ROW)*180/M_PI;
+    }
+    else {
+        float right_ang = arctan2(*topright-*botright,LINE_START_ROW-LINE_END_ROW)*180/M_PI;
+        float left_ang = arctan2(*topleft-*botleft,LINE_START_ROW-LINE_END_ROW)*180/M_PI;
+        *angle = (right_ang + left_ang)/2;
+    }
+    return 1;
 }
 
 int main(){
@@ -188,7 +208,7 @@ int main(){
     rotate_90cw(); // take out after fix hw issue
     trunc_rle();
     int botleft, botright, topleft, topright;
-    find_lanes(&botleft,&botright,&topleft,&topright);
+    bool found = find_lanes(&botleft,&botright,&topleft,&topright);
     float angle;
     compute_angles(&botleft,&botright,&topleft,&topright,&angle);
     write_file();
