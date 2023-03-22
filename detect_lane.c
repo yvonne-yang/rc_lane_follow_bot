@@ -154,9 +154,8 @@ bool find_black_cols(int i, int* left, int* right){
     return 1;
 }
 
-bool find_lanes(){
+bool find_lanes(int* botleft, int* botright, int*topleft, int*topright){
     int i, col;
-    int lcol1=0, lcol2=0, rcol1=0, rcol2=0;
     int black_count=0;
     bool no_lane=false;
     if (line_row1_i == -1 || line_row2_i == -1){
@@ -167,22 +166,30 @@ bool find_lanes(){
 
     // TODO: virtual lines, line extensions
     // TODO: if first col were black
-    bool ret1 = find_black_cols(line_row1_i,&lcol1,&rcol1);
-    bool ret2 = find_black_cols(line_row2_i,&lcol2,&rcol2);
+    bool ret1 = find_black_cols(line_row1_i,botleft,botright);
+    bool ret2 = find_black_cols(line_row2_i,topleft,topright);
 
         // if more than 80% black, no lanes
     if (ret1 && ret2){
-        printf("line1=(%d,%d), (%d,%d)\n",LINE_START_ROW,lcol1,LINE_END_ROW,lcol2);
-        printf("line2=(%d,%d), (%d,%d)\n",LINE_START_ROW,rcol1,LINE_END_ROW,rcol2);
+        printf("line1=(%d,%d), (%d,%d)\n",LINE_START_ROW,*botleft,LINE_END_ROW,*topleft);
+        printf("line2=(%d,%d), (%d,%d)\n",LINE_START_ROW,*topleft,LINE_END_ROW,*topright);
         return 1;
     }
 }
 // TODO: black wrap around
 
+bool compute_angles(int* botleft, int* botright, int*topleft, int*topright,
+        float* angle){
+
+}
+
 int main(){
     read_file();
     rotate_90cw(); // take out after fix hw issue
     trunc_rle();
-    find_lanes();
+    int botleft, botright, topleft, topright;
+    find_lanes(&botleft,&botright,&topleft,&topright);
+    float angle;
+    compute_angles(&botleft,&botright,&topleft,&topright,&angle);
     write_file();
 }
