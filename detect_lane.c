@@ -109,48 +109,50 @@ void trunc_rle() {
 	 */
 }
 
-/*
 // find 2 black regions (lanes) and return middle pixel for each region
 // return 0 if 1 or both not found
-bool find_black_pixel(uint8_t * tx_buff, 
-        int* i, // starting index into tx_buff
-        int* pixel, // starting pixel
-        int row_num, // current row number
-        int* lcol, int* rcol){
-    *lcol=0, *rcol=0;
-    int old_pixel=*pixel;
-    int black_count=((tx_buff[*i]&0xF0)==0x8)? 0:*pixel%IMG_COLS;
-    *pixel+=tx_buff[(*i)++] & 0x0F; // skip the first rle in the row
-    while (*pixel-old_pixel<IMG_COLS){
-        if ((tx_buff[*i]&0xF0) == 0x0){ // black
-            if (*lcol==0){ //leftmost black part
-                int count = tx_buff[*i]&0x0F;
-                while(*pixel-old_pixel<IMG_COLS &&
-                      (tx_buff[*i]&0xF0) == 0x0 &&
-                      (tx_buff[*i]&0x0F) == 0xF){
-                    count+=tx_buff[*i]&0x0F;
-                    *pixel+=tx_buff[(*i)++] & 0x0F;
+bool find_black_cols(int i, int* left, int* right){
+    int col = 0,black_count=0;
+    while (col<IMG_COLS){
+        if ((tx_buff[i]&0xF0) == 0x0){ // black
+            int count = 0;
+            if (*left==0){ //leftmost
+                int start_col = col;
+                count=0;
+                while(col+15<IMG_COLS &&
+                      (tx_buff[i+1]&0xF0) == 0x0){
+                    printf("%d %d\n", tx_buff[i]&0xF0, tx_buff[i]&0x0F);
+                    count+=tx_buff[i]&0x0F;
+                    col+=tx_buff[i++]&0x0F; // 0xF
                 }
-            *lcol=(*pixel)%row_num + (count)/2; // middle
+                count+=tx_buff[i]&0x0F;
+            *left=start_col + (count)/2; // middle
             }
             else{ //rightmost
-                int count = tx_buff[*i]&0x0F;
-                while((tx_buff[*i]&0xF0) == 0x0 &&
-                      (tx_buff[*i]&0x0F) == 0xF){
-                    count+=tx_buff[*i]&0x0F;
-                    *pixel+=tx_buff[(*i)++] & 0x0F;
+                int start_col = col;
+                count=0;
+                while(col+15<IMG_COLS &&
+                      (tx_buff[i+1]&0xF0) == 0x0){
+                    printf("%d %d\n", tx_buff[i]&0xF0, tx_buff[i]&0x0F);
+                    count+=tx_buff[i]&0x0F;
+                    col+=tx_buff[i++]&0x0F; // 0xF
                 }
-                *lcol=(*pixel)%row_num + (tx_buff[*i]&0x0F)/2; // middle
+                count+=tx_buff[i]&0x0F;
+                *right=start_col + (count)/2; // middle
             }
-            black_count+=tx_buff[*i]&0x0F;
+            black_count+=count;
         }
-        printf("%d %d\n", tx_buff[*i]&0xF0, tx_buff[*i]&0x0F);
-        *pixel+=tx_buff[(*i)++] & 0x0F;
+        printf("%d %d\n", tx_buff[i]&0xF0, tx_buff[i]&0x0F);
+        col+=tx_buff[i++]&0x0F;
     }
-    if (black_count >= 140){return false;}
-    return true;
+    printf("black_count=%d\n",black_count);
+    if (black_count > 140)
+    {
+        printf("No lanes found\n");
+        return 0;
+    }
+    return 1;
 }
-*/
 
 bool find_lanes(){
     int i, col;
@@ -163,93 +165,13 @@ bool find_lanes(){
     }
     printf("row1i=%d,row2i=%d\n",line_row1_i,line_row2_i);
 
-    // bottom points
-    i=line_row1_i, col = 0;
+    // TODO: virtual lines, line extensions
     // TODO: if first col were black
-    while (col<IMG_COLS){
-        if ((tx_buff[i]&0xF0) == 0x0){ // black
-            int count = 0;
-            if (lcol1==0){ //leftmost
-                int start_col = col;
-                count=0;
-                while(col+15<IMG_COLS &&
-                      (tx_buff[i+1]&0xF0) == 0x0){
-                    printf("%d %d\n", tx_buff[i]&0xF0, tx_buff[i]&0x0F);
-                    count+=tx_buff[i]&0x0F;
-                    col+=tx_buff[i++]&0x0F; // 0xF
-                }
-                count+=tx_buff[i]&0x0F;
-                lcol1=start_col + (count)/2; // middle
-            }
-            else{ //rightmost
-                int start_col = col;
-                count=0;
-                while(col+15<IMG_COLS &&
-                      (tx_buff[i+1]&0xF0) == 0x0){
-                    printf("%d %d\n", tx_buff[i]&0xF0, tx_buff[i]&0x0F);
-                    count+=tx_buff[i]&0x0F;
-                    col+=tx_buff[i++]&0x0F; // 0xF
-                }
-                count+=tx_buff[i]&0x0F;
-                rcol1=start_col + (count)/2; // middle
-            }
-            black_count+=count;
-        }
-        printf("%d %d\n", tx_buff[i]&0xF0, tx_buff[i]&0x0F);
-        col+=tx_buff[i++]&0x0F;
-    }
-    printf("black_count=%d\n",black_count);
-    if (black_count > 140)
-    {
-        printf("No lanes found\n");
-        return 0;
-    }
-    black_count=0;
+    bool ret1 = find_black_cols(line_row1_i,&lcol1,&rcol1);
+    bool ret2 = find_black_cols(line_row2_i,&lcol2,&rcol2);
 
-    // top points
-    i=line_row2_i, col = 0;
-    // TODO: if first col were black
-    while (col<IMG_COLS){
-        if ((tx_buff[i]&0xF0) == 0x0){ // black
-            int count = 0;
-            if (lcol2==0){ //leftmost
-                int start_col = col;
-                count=0;
-                while(col+15<IMG_COLS &&
-                      (tx_buff[i+1]&0xF0) == 0x0){
-                    printf("%d %d\n", tx_buff[i]&0xF0, tx_buff[i]&0x0F);
-                    count+=tx_buff[i]&0x0F;
-                    col+=tx_buff[i++]&0x0F; // 0xF
-                }
-                count+=tx_buff[i]&0x0F;
-            lcol2=start_col + (count)/2; // middle
-            }
-            else{ //rightmost
-                int start_col = col;
-                count=0;
-                while(col+15<IMG_COLS &&
-                      (tx_buff[i+1]&0xF0) == 0x0){
-                    printf("%d %d\n", tx_buff[i]&0xF0, tx_buff[i]&0x0F);
-                    count+=tx_buff[i]&0x0F;
-                    col+=tx_buff[i++]&0x0F; // 0xF
-                }
-                count+=tx_buff[i]&0x0F;
-                rcol2=start_col + (count)/2; // middle
-            }
-            black_count+=count;
-        }
-        printf("%d %d\n", tx_buff[i]&0xF0, tx_buff[i]&0x0F);
-        col+=tx_buff[i++]&0x0F;
-    }
-    printf("black_count=%d\n",black_count);
-
-    // if more than 80% black, no lanes
-    if (black_count > 140)
-    {
-        printf("No lanes found\n");
-        return 0;
-    }
-    else{
+        // if more than 80% black, no lanes
+    if (ret1 && ret2){
         printf("line1=(%d,%d), (%d,%d)\n",LINE_START_ROW,lcol1,LINE_END_ROW,lcol2);
         printf("line2=(%d,%d), (%d,%d)\n",LINE_START_ROW,rcol1,LINE_END_ROW,rcol2);
         return 1;
