@@ -147,6 +147,9 @@ def monitor(
                     click.echo("FPS too fast to measure")
             prev_frame_ts = now
 
+            # draw lanes
+            frame = cv.line(frame,(20, 130),(30, 110), (0,255,0),thickness=3)
+
             cv.namedWindow("Video Stream", cv.WINDOW_KEEPRATIO)
             cv.imshow("Video Stream", frame)
 
