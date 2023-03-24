@@ -125,6 +125,7 @@ def monitor(
             except ValueError as e:
                 click.echo(f"Error while waiting for frame data: {e}")
 
+            proct = time.time()
             if short_input:
                 raw_data = (
                     expand_4b_to_8b(raw_data)
@@ -150,6 +151,7 @@ def monitor(
             frame = new_frame if full_update else frame + new_frame
 
             now = time.time()
+            click.echo(f"Serial monitor processing took {now-proct} s")
             if prev_frame_ts is not None:
                 try:
                     fps = 1 / (now - prev_frame_ts)

@@ -38,7 +38,7 @@ uint8_t old_snapshot_buff[IMG_ROWS * IMG_COLS];
 uint8_t delta_snapshot_buff[IMG_ROWS * IMG_COLS];
 //uint8_t tx_buff[sizeof(PREAMBLE) + 2 * IMG_ROWS * IMG_COLS + sizeof(SUFFIX)];
 //uint8_t tx_buff[sizeof(PREAMBLE) + IMG_ROWS * IMG_COLS + sizeof(SUFFIX)]; // dma
-uint8_t tx_buff[sizeof(PREAMBLE) + IMG_ROWS * IMG_COLS/2 + sizeof(SUFFIX)]; // trunc
+uint8_t tx_buff[sizeof(PREAMBLE) + 3000 + sizeof(SUFFIX)]; // magik
 size_t tx_buff_len = 0;
 
 int length = IMG_ROWS * IMG_COLS;
@@ -135,7 +135,7 @@ void trunc_rle() {
 	
 	// threshold
 	for (int i = 1; i < length*2; i+=2){
-		buf[i] = ((buf[i]&0xF0)>= THRESHOLD) ? 1 : 0;
+		buf[i] = ((buf[i]&0xF0)>= THRESHOLD) ? 0x80 : 0;
 	}
 	
 	// truncate and RLE
@@ -150,22 +150,12 @@ void trunc_rle() {
 		}
 
 		while(count > 0x7F){ // count > 0x7F, need another byte
-			tx_buff[iter++] = (buf[i]<<7) + 0x7F;
+			tx_buff[iter++] = buf[i] + 0x7F;
 			count -= 0x7F;
 		}
- 		tx_buff[iter++] = (buf[i]<<7) + count;
+ 		tx_buff[iter++] = buf[i] + count;
    }
 	
-	 /* sanity check
-	 int sum = 0;
-	 for (int j = sizeof(PREAMBLE); j < iter; j++){
-	   sum += tx_buff[j]&0x0F;
-	 }
-	 char msg[20];
-	 sprintf(msg, "%d\n", sum);
-	 print_msg(msg);
-	 */
-	 
 	// for calculating deltas
 	for (int i = 1; i < length*2; i+=2){
 		old_snapshot_buff[i/2] = buf[i];
@@ -174,7 +164,8 @@ void trunc_rle() {
   memcpy(&tx_buff[iter], &SUFFIX, sizeof(SUFFIX));
 	HAL_DCMI_Resume(&hdcmi);
 	
-	uart_send_bin(tx_buff,iter+sizeof(SUFFIX));
+	int size = iter+sizeof(SUFFIX);
+	uart_send_bin(tx_buff,size);
 }
 
 
@@ -186,7 +177,7 @@ void send_delta(){
 	
 	// threshold
 	for (int i = 1; i < length*2; i+=2){
-		buf[i] = ((buf[i]&0xF0)>= THRESHOLD) ? 1 : 0;
+		buf[i] = ((buf[i]&0xF0)>= THRESHOLD) ? 0x80 : 0;
 	}
 	
 	// difference
@@ -209,16 +200,17 @@ void send_delta(){
 		}
 
 		while(count >= 0x7F){ // count > 0x75, need another byte
-			tx_buff[iter++] = (buf[i]<<7) + 0x7F;
+			tx_buff[iter++] = buf[i] + 0x7F;
 			count -= 0x7F;
 		}
- 		tx_buff[iter++] = (buf[i]<<7) + count;
+ 		tx_buff[iter++] = buf[i] + count;
    }
 	
 	memcpy(&tx_buff[iter], &SUFFIX, sizeof(SUFFIX));
 	HAL_DCMI_Resume(&hdcmi);
 	
-	uart_send_bin(tx_buff,iter+sizeof(SUFFIX));
+	int size = iter+sizeof(SUFFIX);
+	uart_send_bin(tx_buff,size);
 	
 }
 
