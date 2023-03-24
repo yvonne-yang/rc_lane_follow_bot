@@ -93,17 +93,6 @@ int main(void)
 			
   while (1)
   {
-    // Your code here
-		/* time dcmi 
-		if (dcmi_flag){
-			int new_val = __HAL_TIM_GET_COUNTER(&htim6);
-			sprintf(msg, "Cycles taken for dcmi: %d\n", new_val - timer_val);
-			timer_val = new_val;
-			print_msg(msg);
-			dcmi_flag=0;
-			HAL_DCMI_Resume(&hdcmi);
-		}*/
-		
 		if (HAL_GPIO_ReadPin(USER_Btn_GPIO_Port, USER_Btn_Pin)) {
       HAL_Delay(100);  // debounce
 			print_msg("Snap!\n");
@@ -111,7 +100,6 @@ int main(void)
 		
 		/* 1, 2, 3 */
 		if(dcmi_flag && HAL_UART_GetState(&huart3)== HAL_UART_STATE_READY){
-			//uart_dma();
 			if (frame%FULL_FRAME_N==0){
 				trunc_rle();
 			}
@@ -137,22 +125,110 @@ int main(void)
   }
 }
 
+
+#define THRESHOLD 0x70
 void trunc_rle() {	
   int iter = 0;
 	uint8_t *buf = (uint8_t*)snapshot_buff;
   memcpy(tx_buff, &PREAMBLE, sizeof(PREAMBLE));
 	iter += sizeof(PREAMBLE);
 	
-	/* only truncate
-	for(int i = 1; i < length*2; i+=2){
-		if (i % 4 == 1){
-			tx_buff[iter] = buf[i] & 0xF0;
+	// threshold
+	for (int i = 1; i < length*2; i+=2){
+		buf[i] = ((buf[i]&0xF0)>= THRESHOLD) ? 1 : 0;
+	}
+	
+	// truncate and RLE
+	for (int i = 1; i < length*2; i+=2){
+    int count = 1;
+		while(1){ // find repeating
+			if (i < length*2-2 && buf[i] == buf[i+2]){
+			  count++;
+			  i+=2;
+      }
+      else { break; }
 		}
-		else if(i % 4 == 3){
-			tx_buff[iter] += (buf[i] & 0xF0)>>4;
-			iter += 1;
+
+		while(count > 0x7F){ // count > 0x7F, need another byte
+			tx_buff[iter++] = (buf[i]<<7) + 0x7F;
+			count -= 0x7F;
 		}
-	}*/
+ 		tx_buff[iter++] = (buf[i]<<7) + count;
+   }
+	
+	 /* sanity check
+	 int sum = 0;
+	 for (int j = sizeof(PREAMBLE); j < iter; j++){
+	   sum += tx_buff[j]&0x0F;
+	 }
+	 char msg[20];
+	 sprintf(msg, "%d\n", sum);
+	 print_msg(msg);
+	 */
+	 
+	// for calculating deltas
+	for (int i = 1; i < length*2; i+=2){
+		old_snapshot_buff[i/2] = buf[i];
+	}
+	
+  memcpy(&tx_buff[iter], &SUFFIX, sizeof(SUFFIX));
+	HAL_DCMI_Resume(&hdcmi);
+	
+	uart_send_bin(tx_buff,iter+sizeof(SUFFIX));
+}
+
+
+void send_delta(){
+  int iter = 0;
+	uint8_t *buf = (uint8_t*)snapshot_buff;
+  memcpy(tx_buff, &DELTA_PREAMBLE, sizeof(DELTA_PREAMBLE));
+	iter += sizeof(DELTA_PREAMBLE);
+	
+	// threshold
+	for (int i = 1; i < length*2; i+=2){
+		buf[i] = ((buf[i]&0xF0)>= THRESHOLD) ? 1 : 0;
+	}
+	
+	// difference
+	for (int i = 1; i < length*2; i+=2){
+		int val = buf[i] - old_snapshot_buff[i/2];
+		old_snapshot_buff[i/2] = buf[i];
+		buf[i/2] = val;
+	}
+
+	
+	// truncate and RLE
+	for (int i = 0; i < length; i++){
+    int count = 1;
+		while(1){ // find repeating
+			if (i < length-1 && buf[i] == buf[i+1]){
+			  count++;
+			  i++;
+      }
+      else { break; }
+		}
+
+		while(count >= 0x7F){ // count > 0x75, need another byte
+			tx_buff[iter++] = (buf[i]<<7) + 0x7F;
+			count -= 0x7F;
+		}
+ 		tx_buff[iter++] = (buf[i]<<7) + count;
+   }
+	
+	memcpy(&tx_buff[iter], &SUFFIX, sizeof(SUFFIX));
+	HAL_DCMI_Resume(&hdcmi);
+	
+	uart_send_bin(tx_buff,iter+sizeof(SUFFIX));
+	
+}
+
+
+/* lab 6 code
+void trunc_rle() {	
+  int iter = 0;
+	uint8_t *buf = (uint8_t*)snapshot_buff;
+  memcpy(tx_buff, &PREAMBLE, sizeof(PREAMBLE));
+	iter += sizeof(PREAMBLE);
 	
 	// truncate and RLE
 	for (int i = 1; i < length*2; i+=2){
@@ -172,16 +248,6 @@ void trunc_rle() {
  		tx_buff[iter++] = (buf[i]&0xF0) + count;
    }
 	
-	 /* sanity check
-	 int sum = 0;
-	 for (int j = sizeof(PREAMBLE); j < iter; j++){
-	   sum += tx_buff[j]&0x0F;
-	 }
-	 char msg[20];
-	 sprintf(msg, "%d\n", sum);
-	 print_msg(msg);
-	 */
-	 
 	// for calculating deltas
 	for (int i = 1; i < length*2; i+=2){
 		old_snapshot_buff[i/2] = buf[i];
@@ -250,22 +316,11 @@ void uart_dma() {
 	
 	uart_send_bin(tx_buff,sizeof(tx_buff));
 	
-	/* timing code 
+	// timing code 
   while (HAL_UART_GetState(&huart3)!= HAL_UART_STATE_READY){HAL_Delay(0);}
 	int new_val = __HAL_TIM_GET_COUNTER(&htim6);
 	sprintf(msg, "Cycles taken for uart send: %d", new_val - timer_val);
 	print_msg(msg);
-	*/
-}
 
-
-/*
-void HAL_UART_TxHalfCpltCallback(UART_HandleTypeDef *huart){
-	tx_half_clpt = 1;
-}
-
-
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
-	tx_full_clpt = 1;
 }
 */

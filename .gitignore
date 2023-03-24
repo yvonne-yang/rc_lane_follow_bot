@@ -46,3 +46,4 @@ JLinkLog.txt
 .venv/**
 a.out
 *.csv
+*.uvoptx

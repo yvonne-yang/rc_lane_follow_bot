@@ -40,6 +40,12 @@ COLS = 174
     default=False,
     help="If true, input is a stream of 4b values",
 )
+@click.option(
+    "--shorter",
+    is_flag=True,
+    default=False,
+    help="If true, input is a stream of 1b values (RLE)",
+)
 @click.option("--rle", is_flag=True, default=False, help="Run-Length Encoding")
 @click.option("--quiet", is_flag=True, default=False, help="Print fewer messages")
 @click.option("-w", "--write_to_file", is_flag=True, default=False, 
@@ -54,6 +60,7 @@ def monitor(
     delta_preamble: str,
     suffix: str,
     short_input: bool,
+    shorter: bool,
     rle: bool,
     quiet: bool,
     write_to_file: bool
@@ -78,6 +85,8 @@ def monitor(
     img_rx_size = rows * cols
     if short_input:
         img_rx_size //= 2
+    if shorter:
+        img_rx_size //= 8
     if rle:
         img_rx_size *= 2
 
@@ -122,6 +131,8 @@ def monitor(
                     if not rle
                     else expand_4b_to_8b_rle(raw_data)
                 )
+            if shorter:
+                raw_data = expand_1b_to_8b_rle(raw_data)
             elif rle and len(raw_data) % 2 != 0:
                 # sometimes there serial port picks up leading 0s
                 # discard these
@@ -147,8 +158,8 @@ def monitor(
                     click.echo("FPS too fast to measure")
             prev_frame_ts = now
 
-            # draw lanes
-            frame = cv.line(frame,(20, 130),(30, 110), (0,255,0),thickness=3)
+            #TODO: draw lanes
+            
 
             cv.namedWindow("Video Stream", cv.WINDOW_KEEPRATIO)
             cv.imshow("Video Stream", frame)
@@ -224,17 +235,16 @@ def expand_4b_to_8b_rle(raw_data: bytes) -> bytes:
 
     For example, value 0xFA gets converted to [0xF0, 0x0A]
     """
-    return bytes(val for pix in raw_data for val in [pix & 0x80, pix & 0x0F])
+    return bytes(val for pix in raw_data for val in [pix & 0xF0, pix & 0x0F])
 
-# TODO: stm32 side code for this more efficient 2 bit protocol 
-# (2 bit data, 2 bit count, 2 bit data, 2 bit count)
-def expand_2b_to_8b_rle(raw_data: bytes) -> bytes:
+# (1 bit data, 7 bit count)
+def expand_1b_to_8b_rle(raw_data: bytes) -> bytes:
     """
-    Transform an input of 2-bit encoded RLE values into a string of 8-bit values.
+    Transform an input of 1-bit encoded RLE values into a string of 8-bit values.
 
     For example, value 0xFA gets converted to [0b11, 0b11, 0b10, 0b10]
     """
-    return bytes(val for pix in raw_data for val in [pix & 0xC0, pix & 0x30, pix & 0x0C, pix & 0x03])
+    return bytes(val for pix in raw_data for val in [pix & 0x80, pix & 0x7F])
 
 
 def decode_rle(raw_data: bytes) -> bytes:
