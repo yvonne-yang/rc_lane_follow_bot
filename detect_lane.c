@@ -12,6 +12,7 @@
 #define IMG_COLS 174
 uint8_t buff[IMG_COLS * IMG_ROWS];
 uint8_t tx_buff[sizeof(PREAMBLE) + IMG_ROWS * IMG_COLS/2 + sizeof(SUFFIX)]; // trunc
+
 int line_row1_i=-1, line_row2_i=-1; 
 
 void read_file(){
@@ -123,7 +124,7 @@ bool find_black_cols(int i, int* left, int* right){
                 count=0;
                 while(col+15<IMG_COLS &&
                       (tx_buff[i+1]&0xF0) == 0x0){
-                    printf("%d %d\n", tx_buff[i]&0xF0, tx_buff[i]&0x0F);
+                    //printf("%d %d\n", tx_buff[i]&0xF0, tx_buff[i]&0x0F);
                     count+=tx_buff[i]&0x0F;
                     col+=tx_buff[i++]&0x0F; // 0xF
                 }
@@ -135,7 +136,7 @@ bool find_black_cols(int i, int* left, int* right){
                 count=0;
                 while(col+15<IMG_COLS &&
                       (tx_buff[i+1]&0xF0) == 0x0){
-                    printf("%d %d\n", tx_buff[i]&0xF0, tx_buff[i]&0x0F);
+                    //printf("%d %d\n", tx_buff[i]&0xF0, tx_buff[i]&0x0F);
                     count+=tx_buff[i]&0x0F;
                     col+=tx_buff[i++]&0x0F; // 0xF
                 }
@@ -144,11 +145,11 @@ bool find_black_cols(int i, int* left, int* right){
             }
             black_count+=count;
         }
-        printf("%d %d\n", tx_buff[i]&0xF0, tx_buff[i]&0x0F);
+        //printf("%d %d\n", tx_buff[i]&0xF0, tx_buff[i]&0x0F);
         col+=tx_buff[i++]&0x0F;
     }
     printf("black_count=%d\n",black_count);
-    if (black_count > 140)
+    if (black_count > 100)
     {
         printf("No lanes found\n");
         return 0;
@@ -171,7 +172,6 @@ bool find_lanes(int* botleft, int* botright, int*topleft, int*topright){
         printf("dunno what index line should be\n");
         return 0;
     }
-    printf("row1i=%d,row2i=%d\n",line_row1_i,line_row2_i);
 
     // TODO: virtual lines, line extensions
     // TODO: if first col were black
@@ -180,26 +180,29 @@ bool find_lanes(int* botleft, int* botright, int*topleft, int*topright){
 
         // if more than 80% black, no lanes
     if (ret1 && ret2){
-        printf("line1=(%d,%d), (%d,%d)\n",LINE_START_ROW,*botleft,LINE_END_ROW,*topleft);
-        printf("line2=(%d,%d), (%d,%d)\n",LINE_START_ROW,*topleft,LINE_END_ROW,*topright);
+        printf("line1=(%d,%d), (%d,%d)\n",*botleft,LINE_START_ROW,*topleft,LINE_END_ROW);
+        printf("line2=(%d,%d), (%d,%d)\n",*botright,LINE_START_ROW,*topright,LINE_END_ROW);
         return 1;
     }
 }
 // TODO: black wrap around
 
 bool compute_angles(int* botleft, int* botright, int*topleft, int*topright,
-        float* angle){
+        double* angle){
     if (*botleft == -1 || *topleft==-1){ // only see right lane
-        *angle = arctan2(*topright-*botright,LINE_START_ROW-LINE_END_ROW)*180/M_PI;
+        *angle = atan2(*topright-*botright,LINE_START_ROW-LINE_END_ROW)*180/M_PI;
     }
     else if (*botright == -1 || *topright==-1){ // only see left lane
-        *angle = arctan2(*topleft-*botleft,LINE_START_ROW-LINE_END_ROW)*180/M_PI;
+        *angle = atan2(*topleft-*botleft,LINE_START_ROW-LINE_END_ROW)*180/M_PI;
     }
     else {
-        float right_ang = arctan2(*topright-*botright,LINE_START_ROW-LINE_END_ROW)*180/M_PI;
-        float left_ang = arctan2(*topleft-*botleft,LINE_START_ROW-LINE_END_ROW)*180/M_PI;
+        float right_ang = atan2(*topright-*botright,LINE_START_ROW-LINE_END_ROW)*180/M_PI;
+        printf("right=%f\n",right_ang);
+        float left_ang = atan2(*topleft-*botleft,LINE_START_ROW-LINE_END_ROW)*180/M_PI;
+        printf("left=%f\n",left_ang);
         *angle = (right_ang + left_ang)/2;
     }
+    printf("angle=%f\n",*angle);
     return 1;
 }
 
@@ -207,9 +210,13 @@ int main(){
     read_file();
     rotate_90cw(); // take out after fix hw issue
     trunc_rle();
+
     int botleft, botright, topleft, topright;
     bool found = find_lanes(&botleft,&botright,&topleft,&topright);
-    float angle;
-    compute_angles(&botleft,&botright,&topleft,&topright,&angle);
+    double angle;
+    if (found){
+        compute_angles(&botleft,&botright,&topleft,&topright,&angle);
+    }
+
     write_file();
 }
