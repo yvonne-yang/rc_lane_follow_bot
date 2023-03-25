@@ -12,6 +12,7 @@ BAUDRATE = 115200
 PREAMBLE = "!START!\r\n"
 DELTA_PREAMBLE = "!DELTA!\r\n"
 SUFFIX = "!END!\r\n"
+LANE_SUFFIX = "!END_LANE!\r\n"
 
 ROWS = 144
 COLS = 174
@@ -79,6 +80,8 @@ def monitor(
     if isinstance(preamble, str):
         preamble = preamble.encode("ascii")
 
+    lane_suffix = LANE_SUFFIX.encode("ascii")
+
     if isinstance(delta_preamble, str):
         delta_preamble = delta_preamble.encode("ascii")
 
@@ -119,7 +122,7 @@ def monitor(
                 click.echo("Receiving picture...")
 
             try:
-                raw_data = get_raw_data(ser, img_rx_size, suffix)
+                (raw_data, *lane_data) = get_raw_data(ser, img_rx_size, suffix, lane_suffix)
                 if not quiet:
                     click.echo(f"Received {len(raw_data)} bytes")
             except ValueError as e:
@@ -197,21 +200,26 @@ def wait_for_preamble(ser: Serial, preamble: str, partial_preamble: str) -> bool
             pass
 
 
-def get_raw_data(ser: Serial, num_bytes: int, suffix: bytes = b"") -> bytes:
+def get_raw_data(ser: Serial, num_bytes: int, suffix: bytes = b"", 
+        lane_suffix: bytes = b"") -> bytes:
     """
     Get raw frame data from the serial port.
     """
     rx_max_len = num_bytes + len(suffix)
     max_tries = 10_000
     raw_img = b""
+    lane_data = b""
 
     for _ in range(max_tries):
         raw_img += ser.read(max(1, ser.in_waiting))
 
+        print(raw_img)
+        input()
         suffix_idx = raw_img.find(suffix)
-        if suffix_idx != -1:
+        lane_idx = raw_img.find(lane_suffix)
+        if suffix_idx!=-1 and lane_idx != -1:
+            lane_data = raw_img[suffix_idx+len(suffix):lane_idx]
             raw_img = raw_img[:suffix_idx]
-            break
 
         if len(raw_img) >= rx_max_len:
             raw_img = raw_img[:num_bytes]
