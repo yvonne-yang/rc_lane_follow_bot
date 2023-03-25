@@ -31,6 +31,7 @@
 #define PREAMBLE "\r\n!START!\r\n"
 #define DELTA_PREAMBLE "\r\n!DELTA!\r\n"
 #define SUFFIX "!END!\r\n"
+#define LANE_SUFFIX "!END_LANE!\r\n"
 #define FULL_FRAME_N 5 // change to 1 for no temporal compression
 
 uint16_t snapshot_buff[IMG_ROWS * IMG_COLS];
@@ -38,7 +39,8 @@ uint8_t old_snapshot_buff[IMG_ROWS * IMG_COLS];
 uint8_t delta_snapshot_buff[IMG_ROWS * IMG_COLS];
 //uint8_t tx_buff[sizeof(PREAMBLE) + 2 * IMG_ROWS * IMG_COLS + sizeof(SUFFIX)];
 //uint8_t tx_buff[sizeof(PREAMBLE) + IMG_ROWS * IMG_COLS + sizeof(SUFFIX)]; // dma
-uint8_t tx_buff[sizeof(PREAMBLE) + 3000 + sizeof(SUFFIX)]; // magik
+uint8_t tx_buff[sizeof(PREAMBLE) + 3000 + sizeof(SUFFIX) // magik 
+	 + 5 + sizeof(LANE_SUFFIX)];
 size_t tx_buff_len = 0;
 
 int length = IMG_ROWS * IMG_COLS;
@@ -48,10 +50,16 @@ uint8_t tx_half_clpt = 0;
 uint8_t tx_full_clpt = 1;
 int timer_val;
 
+// lane stuff
+int topleft=-1, topright=-1, botleft=-1, botright=-1;
+float angle = 0;
+int stop = 1;
+
 // Your function definitions here
 void uart_dma(void);
 void trunc_rle(void);
 void send_delta(void);
+int fill_lane_data(int iter);
 
 int main(void)
 {
@@ -164,7 +172,7 @@ void trunc_rle() {
   memcpy(&tx_buff[iter], &SUFFIX, sizeof(SUFFIX));
 	HAL_DCMI_Resume(&hdcmi);
 	
-	int size = iter+sizeof(SUFFIX);
+	int size = fill_lane_data(iter+sizeof(SUFFIX));
 	uart_send_bin(tx_buff,size);
 }
 
@@ -209,11 +217,28 @@ void send_delta(){
 	memcpy(&tx_buff[iter], &SUFFIX, sizeof(SUFFIX));
 	HAL_DCMI_Resume(&hdcmi);
 	
-	int size = iter+sizeof(SUFFIX);
+	int size = fill_lane_data(iter+sizeof(SUFFIX));
 	uart_send_bin(tx_buff,size);
 	
 }
 
+
+int fill_lane_data(int iter){
+	
+	
+	tx_buff[iter++] = topleft;
+	tx_buff[iter++] = 110;
+	tx_buff[iter++] = botleft;
+	tx_buff[iter++] = 135;
+	tx_buff[iter++] = topright;
+	tx_buff[iter++] = 110;
+	tx_buff[iter++] = botright;
+	tx_buff[iter++] = 135;
+	tx_buff[iter++] = 0;
+	tx_buff[iter++] = 45;
+	memcpy(&tx_buff[iter], &LANE_SUFFIX, sizeof(LANE_SUFFIX));
+	return iter + sizeof(LANE_SUFFIX);
+}
 
 /* lab 6 code
 void trunc_rle() {	

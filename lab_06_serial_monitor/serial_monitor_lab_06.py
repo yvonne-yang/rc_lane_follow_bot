@@ -122,7 +122,7 @@ def monitor(
                 click.echo("Receiving picture...")
 
             try:
-                (raw_data, *lane_data) = get_raw_data(ser, img_rx_size, suffix, lane_suffix)
+                (raw_data, lane_data) = get_raw_data(ser, img_rx_size, suffix, lane_suffix)
                 if not quiet:
                     click.echo(f"Received {len(raw_data)} bytes")
             except ValueError as e:
@@ -163,11 +163,10 @@ def monitor(
                     click.echo("FPS too fast to measure")
             prev_frame_ts = now
 
-            #TODO: draw lanes
-            
+            frame_w_lane= draw_lane(frame, lane_data)
 
             cv.namedWindow("Video Stream", cv.WINDOW_KEEPRATIO)
-            cv.imshow("Video Stream", frame)
+            cv.imshow("Video Stream", frame_w_lane)
 
             if write_to_file and full_update:
                 frame = frame.reshape(-1,)
@@ -212,14 +211,12 @@ def get_raw_data(ser: Serial, num_bytes: int, suffix: bytes = b"",
 
     for _ in range(max_tries):
         raw_img += ser.read(max(1, ser.in_waiting))
-
-        print(raw_img)
-        input()
         suffix_idx = raw_img.find(suffix)
         lane_idx = raw_img.find(lane_suffix)
         if suffix_idx!=-1 and lane_idx != -1:
             lane_data = raw_img[suffix_idx+len(suffix):lane_idx]
             raw_img = raw_img[:suffix_idx]
+            break
 
         if len(raw_img) >= rx_max_len:
             raw_img = raw_img[:num_bytes]
@@ -227,8 +224,34 @@ def get_raw_data(ser: Serial, num_bytes: int, suffix: bytes = b"",
     else:
         raise ValueError("Max tries exceeded.")
 
-    return raw_img
+    return raw_img, lane_data
 
+def draw_lane(frame : np.ndarray, lane_data : bytes) -> np.ndarray:
+    # grayscale to color
+    frame = cv.merge([frame, frame, frame])
+    topleftx=lane_data[1]
+    toplefty=lane_data[2]
+    botleftx=lane_data[3]
+    botlefty=lane_data[4]
+    toprightx=lane_data[5]
+    toprighty=lane_data[6]
+    botrightx=lane_data[7]
+    botrighty=lane_data[8]
+    stop=lane_data[9]
+    steer_ang=lane_data[10]
+    print(topleftx,toplefty,botleftx,botlefty,toprightx,toprighty,botrightx,botrighty,stop,steer_ang)
+    if topleftx != 0xff and toplefty != 0xff and botleftx != 0xff and botlefty != 0xff:
+        frame = cv.line(frame,(botleftx,botlefty),(topleftx,toplefty), (0,255,0),thickness=1)
+    if toprightx != 0xff and toprighty != 0xff and botrightx != 0xff and botrighty != 0xff:
+        frame = cv.line(frame,(botrightx,botrighty),(toprightx,toprighty), (0,255,0),thickness=1)
+    if stop:
+        frame = cv.arrowedLine(frame,(int(COLS/2),113),(COLS//2,114),(0,0,255),thickness=1,) #fix at y=30
+        frame = cv.putText(frame,f"STOPPED",(0,20),cv.FONT_HERSHEY_PLAIN,1,(0,0,255))
+    else:
+        frame = cv.arrowedLine(frame,(int(COLS/2),144),(int(COLS/2+np.tan(steer_ang/180*np.pi)*30),114),(0,0,255),thickness=1,) #fix at y=30
+        frame = cv.putText(frame,f"{steer_ang}",(0,20),cv.FONT_HERSHEY_PLAIN,1,(0,0,255))
+    return frame
+ 
 
 def expand_4b_to_8b(raw_data: bytes) -> bytes:
     """
