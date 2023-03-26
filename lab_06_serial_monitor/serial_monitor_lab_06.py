@@ -173,6 +173,8 @@ def monitor(
                 np.savetxt('sample_raw_frame.csv',frame,fmt="%d")
 
                 print("Data written to sample_raw_frame.csv successfully! Shape=", frame.shape)
+                while cv.waitKey(1) != ord("q"): 
+                    pass
                 return
 
             # Wait for 'q' to stop the program
