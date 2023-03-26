@@ -16,7 +16,7 @@ uint8_t tx_buff[sizeof(PREAMBLE) + IMG_ROWS * IMG_COLS/2 + sizeof(SUFFIX)]; // t
 int line_row1_i=-1, line_row2_i=-1; 
 
 void read_file(){
-    FILE* csv_file = fopen("sample_raw_frame.csv", "r"); // open file for reading
+    FILE* csv_file = fopen("0326_straight_half_frame.csv", "r"); // open file for reading
     if (csv_file == NULL) {
         printf("Failed to open file!\n");
         return;
@@ -49,7 +49,7 @@ void write_file(){
         fprintf(csv_file, "%d ", buff[i]);
     }
     fclose(csv_file); // Close the file
-
+    printf("Wrote to file.\n");
 }
 
 void rotate_90cw(){
@@ -71,6 +71,7 @@ void rotate_90cw(){
    }
 }
 
+#define THRESHOLD 0x70
 void trunc_rle() {	
   int iter = 0;
     uint8_t *buf = buff;
@@ -78,6 +79,11 @@ void trunc_rle() {
 	iter += sizeof(PREAMBLE);
     int length = IMG_ROWS*IMG_COLS;
 
+	// threshold
+	for (int i = 1; i < length; i++){
+		buf[i] = ((buf[i]&0xF0)>= THRESHOLD) ? 0x80 : 0;
+	}
+	
 	// truncate and RLE
 	for (int i = 0; i < length; i++){
         // for lane finding
@@ -86,18 +92,18 @@ void trunc_rle() {
 
     int count = 1;
 		while(1){ // find repeating
-			if (i < length-1 && (buf[i]&0xF0) == (buf[i+1]&0xF0)){
+			if (i < length-1 && buf[i] == buf[i+1]){
 			  count++;
 			  i++;
       }
       else { break; }
 		}
 
-		while(count > 0xF){ // count > 15, need another byte
-			tx_buff[iter++] = (buf[i]&0xF0) + 0xF;
-			count -= 0xF;
+		while(count > 0x7F){ // count > 15, need another byte
+			tx_buff[iter++] = buf[i]+ 0x7F;
+			count -= 0x7F;
 		}
- 		tx_buff[iter++] = (buf[i]&0xF0) + count;
+ 		tx_buff[iter++] = buf[i]+ count;
    }
 	
 	 /* sanity check
@@ -117,36 +123,46 @@ bool find_black_cols(int i, int* left, int* right){
     *left = -1, *right = -1;
     int col = 0,black_count=0;
     while (col<IMG_COLS){
-        if ((tx_buff[i]&0xF0) == 0x0){ // black
+        if ((tx_buff[i]&0x80) == 0x0){ // black
             int count = 0;
             if (*left==-1){ //leftmost
                 int start_col = col;
                 count=0;
-                while(col+15<IMG_COLS &&
-                      (tx_buff[i+1]&0xF0) == 0x0){
-                    //printf("%d %d\n", tx_buff[i]&0xF0, tx_buff[i]&0x0F);
-                    count+=tx_buff[i]&0x0F;
-                    col+=tx_buff[i++]&0x0F; // 0xF
+                while(col+0x7F<IMG_COLS &&
+                      (tx_buff[i+1]&0x80) == 0x0){
+                    printf("%d %d\n", tx_buff[i]&0x80, tx_buff[i]&0x7F);
+                    count+=tx_buff[i]&0x7F;
+                    col+=tx_buff[i++]&0x7F; // 0x7F
                 }
-                count+=tx_buff[i]&0x0F;
+                if (col+tx_buff[i]&0x7f>=IMG_COLS){
+                    count+=IMG_COLS-col;
+                }
+                else{
+                    count+=tx_buff[i]&0x7F;
+                }
             *left=start_col + (count)/2; // middle
             }
             else{ //rightmost
                 int start_col = col;
                 count=0;
-                while(col+15<IMG_COLS &&
-                      (tx_buff[i+1]&0xF0) == 0x0){
-                    //printf("%d %d\n", tx_buff[i]&0xF0, tx_buff[i]&0x0F);
-                    count+=tx_buff[i]&0x0F;
-                    col+=tx_buff[i++]&0x0F; // 0xF
+                while(col+0x7f<IMG_COLS &&
+                      (tx_buff[i+1]&0x80) == 0x0){
+                    printf("%d %d\n", tx_buff[i]&0x80, tx_buff[i]&0x7F);
+                    count+=tx_buff[i]&0x7F;
+                    col+=tx_buff[i++]&0x7F; // 0x7F
                 }
-                count+=tx_buff[i]&0x0F;
+                if (col+tx_buff[i]&0x7f>=IMG_COLS){
+                    count+=IMG_COLS-col;
+                }
+                else{
+                count+=tx_buff[i]&0x7F;
+                }
                 *right=start_col + (count)/2; // middle
             }
             black_count+=count;
         }
-        //printf("%d %d\n", tx_buff[i]&0xF0, tx_buff[i]&0x0F);
-        col+=tx_buff[i++]&0x0F;
+        printf("%d %d\n", tx_buff[i]&0x80, tx_buff[i]&0x7F);
+        col+=tx_buff[i++]&0x7F;
     }
     printf("black_count=%d\n",black_count);
     if (black_count > 100)
@@ -175,15 +191,18 @@ bool find_lanes(int* botleft, int* botright, int*topleft, int*topright){
 
     // TODO: virtual lines, line extensions
     // TODO: if first col were black
-    bool ret1 = find_black_cols(line_row1_i,botleft,botright);
-    bool ret2 = find_black_cols(line_row2_i,topleft,topright);
+    printf("row i: %d %d\n", line_row1_i, line_row2_i);
+    bool ret1 = find_black_cols(line_row1_i,botleft,botright); // bottom
+    bool ret2 = find_black_cols(line_row2_i,topleft,topright); // top
 
-        // if more than 80% black, no lanes
-    if (ret1 && ret2){
-        printf("line1=(%d,%d), (%d,%d)\n",*botleft,LINE_START_ROW,*topleft,LINE_END_ROW);
-        printf("line2=(%d,%d), (%d,%d)\n",*botright,LINE_START_ROW,*topright,LINE_END_ROW);
-        return 1;
+    if (*botleft!=-1 && *topleft!=-1){
+        printf("left=(%d,%d), (%d,%d)\n",*botleft,LINE_START_ROW,*topleft,LINE_END_ROW);
     }
+    if (*botright!=-1 && *topright!=-1){
+        printf("right=(%d,%d), (%d,%d)\n",*botright,LINE_START_ROW,*topright,LINE_END_ROW);
+    }
+    if (!ret1 && !ret2){return 0;}
+    else{return 1;}
 }
 // TODO: black wrap around
 
@@ -208,10 +227,10 @@ bool compute_angles(int* botleft, int* botright, int*topleft, int*topright,
 
 int main(){
     read_file();
-    rotate_90cw(); // take out after fix hw issue
+    //rotate_90cw(); // take out after fix hw issue
     trunc_rle();
 
-    int botleft, botright, topleft, topright;
+    int botleft=-1, botright=-1, topleft=-1, topright=-1;
     bool found = find_lanes(&botleft,&botright,&topleft,&topright);
     double angle;
     if (found){

@@ -14,10 +14,10 @@ def main(filein: str):
     frame = cv.merge([frame, frame, frame])
 
     # TODO: get these from serial comm
-    botleft=(6,135)
-    topleft=(45,110)
-    topright=(140,110)
-    botright=(122,135)
+    botleft=(5,135)
+    topleft=(7,110)
+    botright=(162,135)
+    topright=(155,110)
     steer_ang=45 #degrees
 
     frame = cv.line(frame,botleft,topleft, (0,255,0),thickness=1)
