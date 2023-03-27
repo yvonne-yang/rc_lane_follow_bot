@@ -13,10 +13,12 @@
 uint8_t buff[IMG_COLS * IMG_ROWS];
 uint8_t tx_buff[sizeof(PREAMBLE) + IMG_ROWS * IMG_COLS/2 + sizeof(SUFFIX)]; // trunc
 
-int line_row1_i=-1, line_row2_i=-1; 
+int botleft=-1, botright=-1, topleft=-1, topright=-1;
+int line_row1_i=-1, line_row2_i=-1,line_row2_offset=0, line_row1_offset=0;
+double angle;
 
 void read_file(){
-    FILE* csv_file = fopen("0326_straight_half_frame.csv", "r"); // open file for reading
+    FILE* csv_file = fopen("0326_debug_4.csv", "r"); // open file for reading
     if (csv_file == NULL) {
         printf("Failed to open file!\n");
         return;
@@ -40,14 +42,13 @@ void read_file(){
 }
 
 void write_file(){
-    FILE* csv_file = fopen("sample_processed_frame.csv", "w"); 
+    FILE* csv_file = fopen("processed_lane_data.csv", "w"); 
     if (csv_file == NULL) {
         printf("Failed to open output file!\n");
         return;
     }
-    for (int i = 0; i < IMG_ROWS*IMG_COLS; i++) {
-        fprintf(csv_file, "%d ", buff[i]);
-    }
+    fprintf(csv_file, "%d %d %d %d %d", topleft, botleft,
+            topright, botright, (int)(angle));
     fclose(csv_file); // Close the file
     printf("Wrote to file.\n");
 }
@@ -81,15 +82,17 @@ void trunc_rle() {
 
 	// threshold
 	for (int i = 1; i < length; i++){
-		buf[i] = ((buf[i]&0xF0)>= THRESHOLD) ? 0x80 : 0;
+        if(i%IMG_COLS<=4){ // get rid of left black column artifact
+            buf[i] = 0x80;
+        }
+        else{
+		    buf[i] = ((buf[i]&0xF0)>= THRESHOLD) ? 0x80 : 0;
+        }
 	}
 	
 	// truncate and RLE
+    line_row1_i = -1, line_row2_i = -1;
 	for (int i = 0; i < length; i++){
-        // for lane finding
-        if (i == LINE_START_ROW*IMG_COLS){line_row1_i = iter;}
-        else if (i == LINE_END_ROW*IMG_COLS){line_row2_i = iter;}
-
     int count = 1;
 		while(1){ // find repeating
 			if (i < length-1 && buf[i] == buf[i+1]){
@@ -103,7 +106,20 @@ void trunc_rle() {
 			tx_buff[iter++] = buf[i]+ 0x7F;
 			count -= 0x7F;
 		}
- 		tx_buff[iter++] = buf[i]+ count;
+
+        // for lane finding
+        if (line_row1_i == -1 && i >= LINE_START_ROW*IMG_COLS){
+            line_row1_i = iter;
+            line_row1_offset = i - LINE_START_ROW*IMG_COLS +1;
+            printf("firstcount1=%d\n", line_row1_offset);
+        }
+        else if (line_row2_i == -1 && i >= LINE_END_ROW*IMG_COLS){
+            line_row2_i = iter;
+            line_row2_offset = i - LINE_END_ROW*IMG_COLS+1;
+            printf("firstcount2=%d\n", line_row2_offset);
+        }
+ 		
+        tx_buff[iter++] = buf[i]+ count;
    }
 	
 	 /* sanity check
@@ -119,9 +135,10 @@ void trunc_rle() {
 
 // find 2 black regions (lanes) and return middle pixel for each region
 // return 0 if no lanes found
-bool find_black_cols(int i, int* left, int* right){
+bool find_black_cols(int i, int first_count, int* left, int* right){
     *left = -1, *right = -1;
     int col = 0,black_count=0;
+    tx_buff[i] = (tx_buff[i]&0x80) + first_count;
     while (col<IMG_COLS){
         if ((tx_buff[i]&0x80) == 0x0){ // black
             int count = 0;
@@ -134,7 +151,7 @@ bool find_black_cols(int i, int* left, int* right){
                     count+=tx_buff[i]&0x7F;
                     col+=tx_buff[i++]&0x7F; // 0x7F
                 }
-                if (col+tx_buff[i]&0x7f>=IMG_COLS){
+                if (col+(tx_buff[i]&0x7f)>=IMG_COLS){
                     count+=IMG_COLS-col;
                 }
                 else{
@@ -151,7 +168,7 @@ bool find_black_cols(int i, int* left, int* right){
                     count+=tx_buff[i]&0x7F;
                     col+=tx_buff[i++]&0x7F; // 0x7F
                 }
-                if (col+tx_buff[i]&0x7f>=IMG_COLS){
+                if (col+(tx_buff[i]&0x7f)>=IMG_COLS){
                     count+=IMG_COLS-col;
                 }
                 else{
@@ -165,7 +182,7 @@ bool find_black_cols(int i, int* left, int* right){
         col+=tx_buff[i++]&0x7F;
     }
     printf("black_count=%d\n",black_count);
-    if (black_count > 100)
+    if (black_count > 50 || black_count < 5)
     {
         printf("No lanes found\n");
         return 0;
@@ -190,10 +207,9 @@ bool find_lanes(int* botleft, int* botright, int*topleft, int*topright){
     }
 
     // TODO: virtual lines, line extensions
-    // TODO: if first col were black
     printf("row i: %d %d\n", line_row1_i, line_row2_i);
-    bool ret1 = find_black_cols(line_row1_i,botleft,botright); // bottom
-    bool ret2 = find_black_cols(line_row2_i,topleft,topright); // top
+    bool ret1 = find_black_cols(line_row1_i,line_row1_offset,botleft,botright); // bottom
+    bool ret2 = find_black_cols(line_row2_i,line_row2_offset,topleft,topright); // top
 
     if (*botleft!=-1 && *topleft!=-1){
         printf("left=(%d,%d), (%d,%d)\n",*botleft,LINE_START_ROW,*topleft,LINE_END_ROW);
@@ -230,9 +246,7 @@ int main(){
     //rotate_90cw(); // take out after fix hw issue
     trunc_rle();
 
-    int botleft=-1, botright=-1, topleft=-1, topright=-1;
     bool found = find_lanes(&botleft,&botright,&topleft,&topright);
-    double angle;
     if (found){
         compute_angles(&botleft,&botright,&topleft,&topright,&angle);
     }
