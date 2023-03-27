@@ -158,7 +158,7 @@ void trunc_rle() {
 	
 	// threshold
 	for (int i = 1; i < length*2; i+=2){        
-		if(i%IMG_COLS<=8){ // get rid of left black column artifact
+		if(i/2%IMG_COLS<=4){ // get rid of left black column artifact
        buf[i] = 0x80;
     }
     else{
@@ -167,6 +167,7 @@ void trunc_rle() {
 	}
 	
 	// truncate and RLE
+	line_row1_i=-1,line_row2_i=-1;
 	for (int i = 1; i < length*2; i+=2){
     int count = 1;
 		while(1){ // find repeating
@@ -183,22 +184,22 @@ void trunc_rle() {
 		}
 		
 		// for lane finding
-        if (line_row1_i == -1 && i >= LINE_START_ROW*IMG_COLS){
+        if (line_row1_i == -1 && i/2 >= LINE_START_ROW*IMG_COLS){
             line_row1_i = iter;
-            line_row1_offset = i - LINE_START_ROW*IMG_COLS +1;
+            line_row1_offset = i/2 - LINE_START_ROW*IMG_COLS +1;
         }
-        else if (line_row2_i == -1 && i >= LINE_END_ROW*IMG_COLS){
+        else if (line_row2_i == -1 && i/2 >= LINE_END_ROW*IMG_COLS){
             line_row2_i = iter;
-            line_row2_offset = i - LINE_END_ROW*IMG_COLS+1;
+            line_row2_offset = i/2 - LINE_END_ROW*IMG_COLS+1;
         }
  		
  		tx_buff[iter++] = buf[i] + count;
    }
 	
-	// for calculating deltas
+	/* for calculating deltas
 	for (int i = 1; i < length*2; i+=2){
 		old_snapshot_buff[i/2] = buf[i];
-	}
+	}*/
 	
   memcpy(&tx_buff[iter], &SUFFIX, sizeof(SUFFIX));
 	HAL_DCMI_Resume(&hdcmi);
@@ -272,7 +273,7 @@ int fill_lane_data(int iter){
 	tx_buff[iter++] = botright;
 	tx_buff[iter++] = 135;
 	tx_buff[iter++] = stop;
-	tx_buff[iter++] = (int)angle;
+	tx_buff[iter++] = (int8_t)angle;
 	memcpy(&tx_buff[iter], &LANE_SUFFIX, sizeof(LANE_SUFFIX));
 	return iter + sizeof(LANE_SUFFIX);
 }

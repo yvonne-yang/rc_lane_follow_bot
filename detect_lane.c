@@ -18,7 +18,7 @@ int line_row1_i=-1, line_row2_i=-1,line_row2_offset=0, line_row1_offset=0;
 double angle;
 
 void read_file(){
-    FILE* csv_file = fopen("0326_debug_4.csv", "r"); // open file for reading
+    FILE* csv_file = fopen("sample_raw_frame.csv", "r"); // open file for reading
     if (csv_file == NULL) {
         printf("Failed to open file!\n");
         return;
@@ -138,6 +138,7 @@ void trunc_rle() {
 bool find_black_cols(int i, int first_count, int* left, int* right){
     *left = -1, *right = -1;
     int col = 0,black_count=0;
+	  const int old_first_val = tx_buff[i], old_i = i;
     tx_buff[i] = (tx_buff[i]&0x80) + first_count;
     while (col<IMG_COLS){
         if ((tx_buff[i]&0x80) == 0x0){ // black
@@ -181,6 +182,7 @@ bool find_black_cols(int i, int first_count, int* left, int* right){
         printf("%d %d\n", tx_buff[i]&0x80, tx_buff[i]&0x7F);
         col+=tx_buff[i++]&0x7F;
     }
+	  tx_buff[old_i] = old_first_val;
     printf("black_count=%d\n",black_count);
     if (black_count > 50 || black_count < 5)
     {
@@ -200,7 +202,6 @@ bool find_black_cols(int i, int first_count, int* left, int* right){
 bool find_lanes(int* botleft, int* botright, int*topleft, int*topright){
     int i, col;
     int black_count=0;
-    bool no_lane=false;
     if (line_row1_i == -1 || line_row2_i == -1){
         printf("dunno what index line should be\n");
         return 0;

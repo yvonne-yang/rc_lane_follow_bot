@@ -240,7 +240,7 @@ def draw_lane(frame : np.ndarray, lane_data : bytes) -> np.ndarray:
     botrightx=lane_data[7]
     botrighty=lane_data[8]
     stop=lane_data[9]
-    steer_ang=lane_data[10]
+    steer_ang=int.from_bytes(bytes([lane_data[10]]),'big',signed='True')
     print(topleftx,toplefty,botleftx,botlefty,toprightx,toprighty,botrightx,botrighty,stop,steer_ang)
     if topleftx != 0xff and toplefty != 0xff and botleftx != 0xff and botlefty != 0xff:
         frame = cv.line(frame,(botleftx,botlefty),(topleftx,toplefty), (0,255,0),thickness=1)
@@ -251,7 +251,7 @@ def draw_lane(frame : np.ndarray, lane_data : bytes) -> np.ndarray:
         frame = cv.putText(frame,f"STOPPED",(0,20),cv.FONT_HERSHEY_PLAIN,1,(0,0,255))
     else:
         frame = cv.arrowedLine(frame,(int(COLS/2),144),(int(COLS/2+np.tan(steer_ang/180*np.pi)*30),114),(0,0,255),thickness=1,) #fix at y=30
-        frame = cv.putText(frame,f"{steer_ang}",(0,20),cv.FONT_HERSHEY_PLAIN,1,(0,0,255))
+        frame = cv.putText(frame,f"{steer_ang}",(10,20),cv.FONT_HERSHEY_PLAIN,1,(0,0,255))
     return frame
  
 
