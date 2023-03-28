@@ -16,17 +16,6 @@ DMA_HandleTypeDef hdma_usart3_tx;
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
 
-HAL_StatusTypeDef print_msg(char * msg) {
-  // Your code here
-  return HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg),100);
-}
-
-HAL_StatusTypeDef uart_send_bin(uint8_t * buff, unsigned int len) {
-  // Your code here
-  return HAL_UART_Transmit_DMA(&huart3, (uint8_t *)buff, len);
-}
-
-
 /**
   * @brief System Clock Configuration
   * @retval None
@@ -393,7 +382,15 @@ void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+HAL_StatusTypeDef print_msg(char * msg) {
+  // Your code here
+  return HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg),100);
+}
 
+HAL_StatusTypeDef uart_send_bin(uint8_t * buff, unsigned int len) {
+  // Your code here
+  return HAL_UART_Transmit_DMA(&huart3, (uint8_t *)buff, len);
+}
 /* USER CODE END 4 */
 
 /**

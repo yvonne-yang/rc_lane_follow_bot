@@ -16,17 +16,18 @@
   ******************************************************************************
   */
 /* USER CODE END Header */
-/* Includes ------------------------------------------------------------------*/
-#include "main.h"
+
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+/* Includes ------------------------------------------------------------------*/
+#include "main.h"
 #include <string.h>
 #include <stdio.h>
 #include "config.h"
 #include "ov7670.h"
 
-
+/* USER CODE END Includes */
 /* USER CODE BEGIN PV */
 #define PREAMBLE "\r\n!START!\r\n"
 #define DELTA_PREAMBLE "\r\n!DELTA!\r\n"
@@ -52,6 +53,7 @@ int timer_val;
 void uart_dma(void);
 void trunc_rle(void);
 void send_delta(void);
+
 
 int main(void)
 {
@@ -269,3 +271,5 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
 	tx_full_clpt = 1;
 }
 */
+
+/* USER CODE END PV */
