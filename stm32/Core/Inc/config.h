@@ -20,6 +20,8 @@ HAL_StatusTypeDef print_msg(char * msg);
 
 HAL_StatusTypeDef uart_send_bin(uint8_t * buff, unsigned int len);
 
+HAL_StatusTypeDef print_msg_bt(char * msg);
+
 void SystemClock_Config(void);
 void MX_GPIO_Init(void);
 void MX_DMA_Init(void);
