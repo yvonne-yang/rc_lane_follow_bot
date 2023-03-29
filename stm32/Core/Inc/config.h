@@ -29,5 +29,5 @@ void MX_USB_OTG_FS_PCD_Init(void);
 void MX_I2C2_Init(void);
 void MX_TIM1_Init(void);
 void MX_TIM6_Init(void);
-
+void MX_USART2_UART_Init(void);
 #endif

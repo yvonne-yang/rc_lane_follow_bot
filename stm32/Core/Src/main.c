@@ -16,18 +16,35 @@
   ******************************************************************************
   */
 /* USER CODE END Header */
-
+/* Includes ------------------------------------------------------------------*/
+#include "main.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
 #include <string.h>
 #include <stdio.h>
 #include "config.h"
 #include "ov7670.h"
 
 /* USER CODE END Includes */
+
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+
 /* USER CODE BEGIN PV */
 #define PREAMBLE "\r\n!START!\r\n"
 #define DELTA_PREAMBLE "\r\n!DELTA!\r\n"
@@ -72,6 +89,7 @@ int main(void)
   MX_I2C2_Init();
   MX_TIM1_Init();
   MX_TIM6_Init();
+  MX_USART2_UART_Init();
   
   char msg[100];
   
