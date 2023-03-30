@@ -24,11 +24,12 @@ HAL_StatusTypeDef print_msg(char * msg) {
 
 HAL_StatusTypeDef uart_send_bin(uint8_t * buff, unsigned int len) {
   // Your code here
-  return HAL_UART_Transmit_DMA(&huart3, (uint8_t *)buff, len);
+  return HAL_UART_Transmit_DMA(&huart2, (uint8_t *)buff, len);
 }
 
 HAL_StatusTypeDef print_msg_bt(char * msg){
-	return HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg),100);
+	HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg),100);
+	return print_msg("bt sent ok");
 }
 /**
   * @brief System Clock Configuration

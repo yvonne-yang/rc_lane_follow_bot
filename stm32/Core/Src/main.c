@@ -95,31 +95,15 @@ int main(void)
   
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   
-  //ov7670_init();
+  ov7670_init();
   HAL_Delay(100);
 	dcmi_flag = 0;
-  //HAL_TIM_Base_Start(&htim6);
-	//timer_val = __HAL_TIM_GET_COUNTER(&htim6);
-  // ov7670_capture(snapshot_buff);
+  ov7670_capture(snapshot_buff);
   
   // Your startup code here
 	uint8_t *buf = (uint8_t*)snapshot_buff;
   memcpy(tx_buff, &PREAMBLE, sizeof(PREAMBLE));
 	int frame = 0;
-
-	/* timing code
-	while(!dcmi_flag){HAL_Delay(0);}
-  print_buf();*/
-	
-	// bluetooth testing code
-	while(1)
-	{
-		if (HAL_GPIO_ReadPin(USER_Btn_GPIO_Port, USER_Btn_Pin)) {
-      HAL_Delay(100);  // debounce
-			print_msg("Snap!\n");
-			print_msg_bt("Snap!\n");
-		}
-	}
 	// main loop
   while (1)
   {
@@ -141,7 +125,7 @@ int main(void)
 		
 		/* 1, 2, 3 */
 		
-		if(dcmi_flag && HAL_UART_GetState(&huart3)== HAL_UART_STATE_READY){
+		if(dcmi_flag && HAL_UART_GetState(&huart2)== HAL_UART_STATE_READY){
 			//uart_dma();
 			if (frame%FULL_FRAME_N==0){
 				trunc_rle();
