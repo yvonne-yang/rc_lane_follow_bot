@@ -130,6 +130,7 @@ int main(void)
 		if (HAL_GPIO_ReadPin(USER_Btn_GPIO_Port, USER_Btn_Pin)) {
       HAL_Delay(100);  // debounce
 			print_msg("Snap!\n");
+			print_msg_bt("Snap!\n");
 		}
 		
 		/* 1, 2, 3 */
