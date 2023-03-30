@@ -7,23 +7,24 @@ ROWS = 144
 COLS = 174
 
 @click.command()
-@click.option("-f", "--filein", default="sample_processed_frame.csv")
-def main(filein: str):
-    frame = np.loadtxt(filein, dtype=np.uint8).reshape(ROWS, COLS, 1)
+@click.option("-f", "--framefile", default="sample_raw_frame.csv")
+@click.option("-l", "--lanefile", default="processed_lane_data.csv")
+def main(framefile: str,
+        lanefile: str):
+    frame = np.loadtxt(framefile, dtype=np.uint8).reshape(ROWS, COLS, 1)
     assert frame.shape == (ROWS, COLS, 1), f"Expected frame shape ({ROWS}, {COLS}, 1) got {frame.shape}"
     frame = cv.merge([frame, frame, frame])
 
-    # TODO: get these from serial comm
-    botleft=(6,135)
-    topleft=(45,110)
-    topright=(140,110)
-    botright=(122,135)
-    steer_ang=45 #degrees
+    # TODO: get these from file also
+    with open(lanefile) as f:
+        lines = f.readline()
+        [topleft, botleft, topright, botright, angle] = [int(a) for a in lines.split(" ")]
+        print(topleft, botleft, topright, botright, angle)
 
-    frame = cv.line(frame,botleft,topleft, (0,255,0),thickness=1)
-    frame = cv.line(frame,botright,topright, (0,255,0),thickness=1)
-    frame = cv.arrowedLine(frame,(int(COLS/2),144),(int(COLS/2+np.tan(steer_ang/180*np.pi)*30),114),(0,0,255),thickness=1,) #fix at y=30
-    frame = cv.putText(frame,f"{steer_ang}",(0,20),cv.FONT_HERSHEY_PLAIN,1,(0,0,255))
+    frame = cv.line(frame,(botleft,135),(topleft,110), (0,255,0),thickness=1)
+    frame = cv.line(frame,(botright,135),(topright,110), (0,255,0),thickness=1)
+    frame = cv.arrowedLine(frame,(int(COLS/2),144),(int(COLS/2+np.tan(angle/180*np.pi)*30),114),(0,0,255),thickness=1,) #fix at y=30
+    frame = cv.putText(frame,f"{angle}",(0,20),cv.FONT_HERSHEY_PLAIN,1,(0,0,255))
     #frame = cv.line(frame,(2, 135),(45, 110), (0,255,0),thickness=1)
     #frame = cv.line(frame,(118, 135),(145, 110), (0,255,0),thickness=1)
     cv.namedWindow("Video Stream", cv.WINDOW_KEEPRATIO)
