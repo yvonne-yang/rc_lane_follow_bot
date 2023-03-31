@@ -66,12 +66,18 @@ void Error_Handler(void);
 #define MCO_GPIO_Port GPIOH
 #define LD1_Pin GPIO_PIN_0
 #define LD1_GPIO_Port GPIOB
+#define PB2_H_Bridge_PWM_Pin GPIO_PIN_2
+#define PB2_H_Bridge_PWM_GPIO_Port GPIOB
 #define LD3_Pin GPIO_PIN_14
 #define LD3_GPIO_Port GPIOB
 #define STLK_RX_Pin GPIO_PIN_8
 #define STLK_RX_GPIO_Port GPIOD
 #define STLK_TX_Pin GPIO_PIN_9
 #define STLK_TX_GPIO_Port GPIOD
+#define H_Bridge_IN3_Pin GPIO_PIN_2
+#define H_Bridge_IN3_GPIO_Port GPIOG
+#define H_Bridge_IN4_Pin GPIO_PIN_3
+#define H_Bridge_IN4_GPIO_Port GPIOG
 #define USB_PowerSwitchOn_Pin GPIO_PIN_6
 #define USB_PowerSwitchOn_GPIO_Port GPIOG
 #define USB_OverCurrent_Pin GPIO_PIN_7
@@ -90,8 +96,13 @@ void Error_Handler(void);
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
 #define TCK_GPIO_Port GPIOA
+#define H_Bridge_IN1_Pin GPIO_PIN_12
+#define H_Bridge_IN1_GPIO_Port GPIOC
+#define H_Bridge_IN2_Pin GPIO_PIN_2
+#define H_Bridge_IN2_GPIO_Port GPIOD
 #define LD2_Pin GPIO_PIN_7
 #define LD2_GPIO_Port GPIOB
+
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

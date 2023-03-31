@@ -45,13 +45,10 @@
 
 /* USER CODE END PM */
 
-/* Private variables ---------------------------------------------------------*/
-
-#ifndef M_PI
-#    define M_PI 3.14159265358979323846
-#endif
-
 /* USER CODE BEGIN PV */
+#ifndef M_PI
+	#define M_PI 3.14159265358979323846
+#endif
 #define PREAMBLE "\r\n!START!\r\n"
 #define DELTA_PREAMBLE "\r\n!DELTA!\r\n"
 #define SUFFIX "!END!\r\n"
@@ -110,6 +107,7 @@ int main(void)
   MX_TIM1_Init();
   MX_TIM6_Init();
   MX_USART2_UART_Init();
+  MX_TIM2_Init();
   
   char msg[100];
   
@@ -514,5 +512,3 @@ void uart_dma() {
 */
 
 /* USER CODE END PV */
-
-
