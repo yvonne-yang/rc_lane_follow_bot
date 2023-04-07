@@ -28,6 +28,7 @@
 #include <stdbool.h>
 #include "config.h"
 #include "ov7670.h"
+#include "motor.h"
 
 /* USER CODE END Includes */
 
@@ -98,6 +99,7 @@ int main(void)
   SystemClock_Config();
 
   /* Initialize all configured peripherals */
+	TIM2->CCR4 = 100;
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_DCMI_Init();
@@ -122,11 +124,15 @@ int main(void)
 	uint8_t *buf = (uint8_t*)snapshot_buff;
   memcpy(tx_buff, &PREAMBLE, sizeof(PREAMBLE));
 	int frame = 0;
+	
+	motor_stop();
+	
 	// main loop
   while (1)
   {
 		if (HAL_GPIO_ReadPin(USER_Btn_GPIO_Port, USER_Btn_Pin)) {
       HAL_Delay(100);  // debounce
+		
 			print_msg("Snap!\n");
 			print_msg_bt("Snap!\n");
 		}
@@ -148,19 +154,16 @@ int main(void)
 			dcmi_flag = 0;
 			frame++;
 		
-		}
-		/* 2. UART DMA half frames 
-		if(dcmi_flag && tx_full_clpt){ 
-			for(int i = 1; i < length * 2; i+=2){
-				tx_buff[tx_buff_len++] = buf[i];
+		if(stop){
+			motor_stop();
 			}
-			tx_full_clpt = 0;
+		else{
+			motor(angle);
+			HAL_Delay(1000);
+			motor_stop();
+			HAL_Delay(500);
 		}
-		if(dcmi_flag && tx_half_clpt){ 
-			HAL_DCMI_Resume(&hdcmi);
-			tx_half_clpt = 0;
 		}
-		*/
   }
 }
 
@@ -373,6 +376,16 @@ bool find_lanes(int* botleft, int* botright, int*topleft, int*topright){
     // TODO: virtual lines, line extensions
     bool ret1 = find_black_cols(line_row1_i,line_row1_offset,botleft,botright); // bottom
     bool ret2 = find_black_cols(line_row2_i,line_row2_offset,topleft,topright); // top
+
+    // if lane straddles center
+    if (*botright!=-1 && *topleft!=-1 && *topright==-1 && *botleft==-1){
+        *topright = *topleft;
+        *topleft = -1;
+    } 
+    if (*botleft!=-1 && *topright!=-1 && *topleft==-1 && *botright==-1){
+        *topleft = *topright;
+        *topright = -1;
+    } 
 
     // return 0 if neither lane found
     if (!ret1 && !ret2){
