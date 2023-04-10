@@ -57,7 +57,13 @@
 #define FULL_FRAME_N 5 // change to 1 for no temporal compression
 
 #define LINE_START_ROW 135
+#define LINE_MID_ROW4 130
+#define LINE_MID_ROW3 125
+#define LINE_MID_ROW2 120
+#define LINE_MID_ROW1 115
 #define LINE_END_ROW 110
+//#define DYNAMIC_THRESHOLD 
+#define THRESHOLD 0x70
 
 uint16_t snapshot_buff[IMG_ROWS * IMG_COLS];
 uint8_t old_snapshot_buff[IMG_ROWS * IMG_COLS];
@@ -75,6 +81,10 @@ int timer_val;
 
 // lane stuff
 int line_row1_i=-1, line_row2_i=-1,line_row2_offset=0, line_row1_offset=0;
+int mid_row1_i=-1, mid_row1_offset=0,
+   mid_row2_i=-1,mid_row2_offset=0,
+   mid_row3_i=-1,mid_row3_offset=0,
+   mid_row4_i=-1,mid_row4_offset=0;
 int topleft=-1, topright=-1, botleft=-1, botright=-1;
 double angle = 0;
 int stop = 1;
@@ -168,25 +178,36 @@ int main(void)
 }
 
 
-#define THRESHOLD 0x70
 void trunc_rle() {	
   int iter = 0;
 	uint8_t *buf = (uint8_t*)snapshot_buff;
   memcpy(tx_buff, &PREAMBLE, sizeof(PREAMBLE));
 	iter += sizeof(PREAMBLE);
 	
+    // dynamic threshold
+#ifdef DYNAMIC_THRESHOLD
+    int maxp=0,minp= 0xff;
+    for (int i = 1; i < length*2;i+=4){
+			maxp = (buf[i]>maxp)?buf[i]:maxp; 
+			minp = (buf[i]<minp)?buf[i]:minp; 
+    }
+    int threshold = (maxp-minp)*0.7; // min(THRESHOLD, )
+#else
+  int threshold=0x70;
+#endif
+
 	// threshold
 	for (int i = 1; i < length*2; i+=2){        
 		if(i/2%IMG_COLS<=4){ // get rid of left black column artifact
        buf[i] = 0x80;
     }
     else{
-			buf[i] = ((buf[i]&0xF0)>= THRESHOLD) ? 0x80 : 0;
+			buf[i] = (buf[i]>= threshold) ? 0x80 : 0;
 		}
 	}
 	
 	// truncate and RLE
-	line_row1_i=-1,line_row2_i=-1;
+	line_row1_i=-1,line_row2_i=-1,mid_row1_i=-1,mid_row2_i=-1,mid_row3_i=-1,mid_row4_i=-1;
 	for (int i = 1; i < length*2; i+=2){
     int count = 1;
 		while(1){ // find repeating
@@ -202,14 +223,30 @@ void trunc_rle() {
 			count -= 0x7F;
 		}
 		
-		// for lane finding
-        if (line_row1_i == -1 && i/2 >= LINE_START_ROW*IMG_COLS){
-            line_row1_i = iter;
-            line_row1_offset = i/2 - LINE_START_ROW*IMG_COLS +1;
-        }
-        else if (line_row2_i == -1 && i/2 >= LINE_END_ROW*IMG_COLS){
+		// record rle index for lane finding
+        if (line_row2_i == -1 && i/2 >= LINE_END_ROW*IMG_COLS){
             line_row2_i = iter;
             line_row2_offset = i/2 - LINE_END_ROW*IMG_COLS+1;
+        }
+        else if (mid_row1_i == -1 && i/2 >= LINE_MID_ROW1*IMG_COLS){
+            mid_row1_i = iter;
+            mid_row1_offset = i/2 - LINE_MID_ROW1*IMG_COLS+1;
+        }
+        else if (mid_row2_i == -1 && i/2 >= LINE_MID_ROW2*IMG_COLS){
+            mid_row2_i = iter;
+            mid_row2_offset = i/2 - LINE_MID_ROW2*IMG_COLS+1;
+        }
+        else if (mid_row3_i == -1 && i/2 >= LINE_MID_ROW3*IMG_COLS){
+            mid_row3_i = iter;
+            mid_row3_offset = i/2 - LINE_MID_ROW3*IMG_COLS+1;
+        }
+        else if (mid_row4_i == -1 && i/2 >= LINE_MID_ROW4*IMG_COLS){
+            mid_row4_i = iter;
+            mid_row4_offset = i/2 - LINE_MID_ROW4*IMG_COLS+1;
+        }
+        else if (line_row1_i == -1 && i/2 >= LINE_START_ROW*IMG_COLS){
+            line_row1_i = iter;
+            line_row1_offset = i/2 - LINE_START_ROW*IMG_COLS +1;
         }
  		
  		tx_buff[iter++] = buf[i] + count;
@@ -300,6 +337,7 @@ int fill_lane_data(int iter){
 /*Lane detection*/
 // find 2 black regions (lanes) and return middle pixel for each region
 // return 0 if no lanes found
+// left and right are set to -1 if not found
 bool find_black_cols(int i, int first_count, int* left, int* right){
     *left = -1, *right = -1;
     int col = 0,black_count=0;
@@ -379,12 +417,42 @@ bool find_lanes(int* botleft, int* botright, int*topleft, int*topright){
 
     // if lane straddles center
     if (*botright!=-1 && *topleft!=-1 && *topright==-1 && *botleft==-1){
+        int tmpleft, tmpright;
+        // check if the mid rows have a black col within the bounds of botright topleft
+        if (find_black_cols(mid_row1_i,mid_row1_offset,tmpleft,tmpright) &&
+            ((tmpleft!=-1 && tmpleft<botright+5 && tmpleft>topleft-5) || 
+             (tmpright!=-1 && tmpright<botright+5 && tmpright>topleft-5))){
+        if (find_black_cols(mid_row2_i,mid_row2_offset,tmpleft,tmpright) &&
+            ((tmpleft!=-1 && tmpleft<botright+5 && tmpleft>topleft-5) || 
+             (tmpright!=-1 && tmpright<botright+5 && tmpright>topleft-5))){
+        if (find_black_cols(mid_row3_i,mid_row3_offset,tmpleft,tmpright) &&
+            ((tmpleft!=-1 && tmpleft<botright+5 && tmpleft>topleft-5) || 
+             (tmpright!=-1 && tmpright<botright+5 && tmpright>topleft-5))){
+        if (find_black_cols(mid_row4_i,mid_row4_offset,tmpleft,tmpright) &&
+            ((tmpleft!=-1 && tmpleft<botright+5 && tmpleft>topleft-5) || 
+             (tmpright!=-1 && tmpright<botright+5 && tmpright>topleft-5))){
         *topright = *topleft;
         *topleft = -1;
+        }}}}
     } 
     if (*botleft!=-1 && *topright!=-1 && *topleft==-1 && *botright==-1){
-        *topleft = *topright;
+        int tmpleft, tmpright;
+        // check if the mid rows have a black col within the bounds of botleft topright
+        if (find_black_cols(mid_row1_i,mid_row1_offset,tmpleft,tmpright) &&
+            ((tmpleft!=-1 && tmpleft<topright+5 && tmpleft>botleft-5) || 
+             (tmpright!=-1 && tmpright<topright+5 && tmpright>botleft-5))){
+        if (find_black_cols(mid_row2_i,mid_row2_offset,tmpleft,tmpright) &&
+            ((tmpleft!=-1 && tmpleft<topright+5 && tmpleft>botleft-5) || 
+             (tmpright!=-1 && tmpright<topright+5 && tmpright>botleft-5))){
+        if (find_black_cols(mid_row3_i,mid_row3_offset,tmpleft,tmpright) &&
+            ((tmpleft!=-1 && tmpleft<topright+5 && tmpleft>botleft-5) || 
+             (tmpright!=-1 && tmpright<topright+5 && tmpright>botleft-5))){
+        if (find_black_cols(mid_row4_i,mid_row4_offset,tmpleft,tmpright) &&
+            ((tmpleft!=-1 && tmpleft<topright+5 && tmpleft>botleft-5) || 
+             (tmpright!=-1 && tmpright<topright+5 && tmpright>botleft-5))){
+        *botleft = *topright;
         *topright = -1;
+        }}}}
     } 
 
     // return 0 if neither lane found
