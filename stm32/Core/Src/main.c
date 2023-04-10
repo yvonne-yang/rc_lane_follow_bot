@@ -419,18 +419,18 @@ bool find_lanes(int* botleft, int* botright, int*topleft, int*topright){
     if (*botright!=-1 && *topleft!=-1 && *topright==-1 && *botleft==-1){
         int tmpleft, tmpright;
         // check if the mid rows have a black col within the bounds of botright topleft
-        if (find_black_cols(mid_row1_i,mid_row1_offset,tmpleft,tmpright) &&
-            ((tmpleft!=-1 && tmpleft<botright+5 && tmpleft>topleft-5) || 
-             (tmpright!=-1 && tmpright<botright+5 && tmpright>topleft-5))){
-        if (find_black_cols(mid_row2_i,mid_row2_offset,tmpleft,tmpright) &&
-            ((tmpleft!=-1 && tmpleft<botright+5 && tmpleft>topleft-5) || 
-             (tmpright!=-1 && tmpright<botright+5 && tmpright>topleft-5))){
-        if (find_black_cols(mid_row3_i,mid_row3_offset,tmpleft,tmpright) &&
-            ((tmpleft!=-1 && tmpleft<botright+5 && tmpleft>topleft-5) || 
-             (tmpright!=-1 && tmpright<botright+5 && tmpright>topleft-5))){
-        if (find_black_cols(mid_row4_i,mid_row4_offset,tmpleft,tmpright) &&
-            ((tmpleft!=-1 && tmpleft<botright+5 && tmpleft>topleft-5) || 
-             (tmpright!=-1 && tmpright<botright+5 && tmpright>topleft-5))){
+        if (find_black_cols(mid_row1_i,mid_row1_offset,&tmpleft,&tmpright) &&
+            ((tmpleft!=-1 && tmpleft<*botright+5 && tmpleft>*topleft-5) || 
+             (tmpright!=-1 && tmpright<*botright+5 && tmpright>*topleft-5))){
+        if (find_black_cols(mid_row2_i,mid_row2_offset,&tmpleft,&tmpright) &&
+            ((tmpleft!=-1 && tmpleft<*botright+5 && tmpleft>*topleft-5) || 
+             (tmpright!=-1 && tmpright<*botright+5 && tmpright>*topleft-5))){
+        if (find_black_cols(mid_row3_i,mid_row3_offset,&tmpleft,&tmpright) &&
+            ((tmpleft!=-1 && tmpleft<*botright+5 && tmpleft>*topleft-5) || 
+             (tmpright!=-1 && tmpright<*botright+5 && tmpright>*topleft-5))){
+        if (find_black_cols(mid_row4_i,mid_row4_offset,&tmpleft,&tmpright) &&
+            ((tmpleft!=-1 && tmpleft<*botright+5 && tmpleft>*topleft-5) || 
+             (tmpright!=-1 && tmpright<*botright+5 && tmpright>*topleft-5))){
         *topright = *topleft;
         *topleft = -1;
         }}}}
@@ -438,18 +438,18 @@ bool find_lanes(int* botleft, int* botright, int*topleft, int*topright){
     if (*botleft!=-1 && *topright!=-1 && *topleft==-1 && *botright==-1){
         int tmpleft, tmpright;
         // check if the mid rows have a black col within the bounds of botleft topright
-        if (find_black_cols(mid_row1_i,mid_row1_offset,tmpleft,tmpright) &&
-            ((tmpleft!=-1 && tmpleft<topright+5 && tmpleft>botleft-5) || 
-             (tmpright!=-1 && tmpright<topright+5 && tmpright>botleft-5))){
-        if (find_black_cols(mid_row2_i,mid_row2_offset,tmpleft,tmpright) &&
-            ((tmpleft!=-1 && tmpleft<topright+5 && tmpleft>botleft-5) || 
-             (tmpright!=-1 && tmpright<topright+5 && tmpright>botleft-5))){
-        if (find_black_cols(mid_row3_i,mid_row3_offset,tmpleft,tmpright) &&
-            ((tmpleft!=-1 && tmpleft<topright+5 && tmpleft>botleft-5) || 
-             (tmpright!=-1 && tmpright<topright+5 && tmpright>botleft-5))){
-        if (find_black_cols(mid_row4_i,mid_row4_offset,tmpleft,tmpright) &&
-            ((tmpleft!=-1 && tmpleft<topright+5 && tmpleft>botleft-5) || 
-             (tmpright!=-1 && tmpright<topright+5 && tmpright>botleft-5))){
+        if (find_black_cols(mid_row1_i,mid_row1_offset,&tmpleft,&tmpright) &&
+            ((tmpleft!=-1 && tmpleft<*topright+5 && tmpleft>*botleft-5) || 
+             (tmpright!=-1 && tmpright<*topright+5 && tmpright>*botleft-5))){
+        if (find_black_cols(mid_row2_i,mid_row2_offset,&tmpleft,&tmpright) &&
+            ((tmpleft!=-1 && tmpleft<*topright+5 && tmpleft>*botleft-5) || 
+             (tmpright!=-1 && tmpright<*topright+5 && tmpright>*botleft-5))){
+        if (find_black_cols(mid_row3_i,mid_row3_offset,&tmpleft,&tmpright) &&
+            ((tmpleft!=-1 && tmpleft<*topright+5 && tmpleft>*botleft-5) || 
+             (tmpright!=-1 && tmpright<*topright+5 && tmpright>*botleft-5))){
+        if (find_black_cols(mid_row4_i,mid_row4_offset,&tmpleft,&tmpright) &&
+            ((tmpleft!=-1 && tmpleft<*topright+5 && tmpleft>*botleft-5) || 
+             (tmpright!=-1 && tmpright<*topright+5 && tmpright>*botleft-5))){
         *botleft = *topright;
         *topright = -1;
         }}}}
