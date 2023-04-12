@@ -1,7 +1,7 @@
 void motor_stop();
-void go_left(double angle);
+void go_left();
 
-void go_right(double angle);
+void go_right();
 
 void go_straight();
 

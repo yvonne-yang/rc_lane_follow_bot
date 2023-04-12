@@ -56,12 +56,14 @@
 #define LANE_SUFFIX "!END_LANE!\r\n"
 #define FULL_FRAME_N 5 // change to 1 for no temporal compression
 
-#define LINE_START_ROW 135
-#define LINE_MID_ROW4 130
-#define LINE_MID_ROW3 125
-#define LINE_MID_ROW2 120
-#define LINE_MID_ROW1 115
-#define LINE_END_ROW 110
+#define LINE_START_ROW 120
+#define LINE_MID_ROW4 115
+#define LINE_MID_ROW3 110
+#define LINE_MID_ROW2 105
+#define LINE_MID_ROW1 100
+#define LINE_END_ROW 95
+//#define LINE_START_ROW 135
+//#define LINE_END_ROW 110
 //#define DYNAMIC_THRESHOLD 
 #define THRESHOLD 0x70
 
@@ -136,7 +138,45 @@ int main(void)
 	int frame = 0;
 	
 	motor_stop();
-	
+	/*hardcoded path
+	go_straight();
+	HAL_Delay(530);
+	go_left();
+	HAL_Delay(70);
+	go_straight();
+	HAL_Delay(420);
+	motor_stop();
+	HAL_Delay(1000);//before first right turn
+	go_left();
+	HAL_Delay(30);
+	go_right();
+  HAL_Delay(120);
+	go_straight();
+	HAL_Delay(330);
+	go_right();
+  HAL_Delay(280);
+	go_straight();
+	HAL_Delay(360);
+	go_left();
+	HAL_Delay(50);
+	motor_stop();
+	HAL_Delay(1000);//exit first turn
+	go_straight();
+	HAL_Delay(940);
+	go_left();
+	HAL_Delay(20);
+	go_right();
+  HAL_Delay(270);
+	go_straight();
+	HAL_Delay(480);
+	go_right();
+  HAL_Delay(160);
+	go_straight();
+	HAL_Delay(700);
+	go_straight();
+	HAL_Delay(200);
+	motor_stop();*/
+		
 	// main loop
   while (1)
   {
@@ -147,19 +187,11 @@ int main(void)
 			print_msg_bt("Snap!\n");
 		}
 		
-		/* 1, 2, 3 */
 		if(dcmi_flag && HAL_UART_GetState(&huart2)== HAL_UART_STATE_READY){
 			topleft=-1, topright=-1, botleft=-1, botright=-1;
 			angle = 0; stop = 1;
 			
 			trunc_rle();
-			
-			/*if (frame%FULL_FRAME_N==0){
-				trunc_rle();
-			}
-			else{
-				send_delta();
-			}*/
 			
 			dcmi_flag = 0;
 			frame++;
@@ -169,11 +201,11 @@ int main(void)
 			}
 		else{
 			motor(angle);
-			HAL_Delay(1000);
+		  //go_straight();
 			motor_stop();
-			HAL_Delay(500);
+			HAL_Delay(1000);
 		}
-		}
+	}
   }
 }
 
@@ -318,7 +350,8 @@ int fill_lane_data(int iter){
 		ret = compute_angles(&botleft, &botright, &topleft, &topright,
    &angle);
 	}
-	if (!ret) {stop = 1; angle = 0;} else {stop = 0;}
+	if (!ret) {stop = 1; angle = 0; botleft=topleft=topright=botright=-1;} 
+  else {stop = 0;}
 	
 	tx_buff[iter++] = topleft;
 	tx_buff[iter++] = 110;
@@ -473,17 +506,17 @@ bool compute_angles(int* botleft, int* botright, int*topleft, int*topright,
 		}
 		else if (*botleft == -1 || *topleft==-1){ // only see right lane
         *angle = atan2(*topright-*botright,LINE_START_ROW-LINE_END_ROW)*180/M_PI;
-    }
+		}
     else if (*botright == -1 || *topright==-1){ // only see left lane
         *angle = atan2(*topleft-*botleft,LINE_START_ROW-LINE_END_ROW)*180/M_PI;
-    }
+		}
     else {
         float right_ang = atan2(*topright-*botright,LINE_START_ROW-LINE_END_ROW)*180/M_PI;
         //printf("right=%f\n",right_ang);
         float left_ang = atan2(*topleft-*botleft,LINE_START_ROW-LINE_END_ROW)*180/M_PI;
         //printf("left=%f\n",left_ang);
         *angle = (right_ang + left_ang)/2;
-    }
+		}
     //printf("angle=%f\n",*angle);
     return 1;
 }
