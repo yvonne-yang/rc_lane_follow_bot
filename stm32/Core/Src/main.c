@@ -73,6 +73,8 @@ uint8_t delta_snapshot_buff[IMG_ROWS * IMG_COLS];
 uint8_t tx_buff[sizeof(PREAMBLE) + 3000 + sizeof(SUFFIX) // magik 
 	 + 5 + sizeof(LANE_SUFFIX)]; // lane stuffs
 size_t tx_buff_len = 0;
+uint8_t uart_rx_buffer[10] = {0};
+bool drive_flag = false;
 
 int length = IMG_ROWS * IMG_COLS;
 
@@ -124,7 +126,6 @@ int main(void)
   MX_TIM2_Init();
   
   char msg[100];
-  
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   
   ov7670_init();
@@ -138,6 +139,7 @@ int main(void)
 	int frame = 0;
 	
 	motor_stop();
+	
 	/*hardcoded path
 	go_straight();
 	HAL_Delay(530);
@@ -176,36 +178,50 @@ int main(void)
 	go_straight();
 	HAL_Delay(200);
 	motor_stop();*/
-		
+	HAL_UART_Receive_IT(&huart2, uart_rx_buffer, 1); 
+	HAL_UART_Receive_IT(&huart3, uart_rx_buffer, 1); 
 	// main loop
   while (1)
   {
+
 		if (HAL_GPIO_ReadPin(USER_Btn_GPIO_Port, USER_Btn_Pin)) {
       HAL_Delay(100);  // debounce
 		
 			print_msg("Snap!\n");
-			print_msg_bt("Snap!\n");
 		}
 		
-		if(dcmi_flag && HAL_UART_GetState(&huart2)== HAL_UART_STATE_READY){
+		if(dcmi_flag && HAL_UART_GetState(&huart2) != HAL_UART_STATE_BUSY_TX){
 			topleft=-1, topright=-1, botleft=-1, botright=-1;
-			angle = 0; stop = 1;
-			
+			angle = 0;
 			trunc_rle();
-			
 			dcmi_flag = 0;
 			frame++;
-		
-		if(stop){
-			motor_stop();
-			}
-		else{
-			motor(angle);
-		  //go_straight();
-			motor_stop();
-			HAL_Delay(1000);
 		}
-	}
+		if(drive_flag){
+			char direction = uart_rx_buffer[0];
+			int delay = 500;
+			if(direction == 'w'){
+				go_straight();
+				HAL_Delay(delay);
+				motor_stop();
+			}else 
+			if(direction == 'a'){
+				go_left();
+				HAL_Delay(150);
+				motor_stop();
+			}else 
+			if(direction == 's'){
+				go_backward();
+				HAL_Delay(delay);
+				motor_stop();
+			}else 
+			if(direction == 'd'){
+				go_right();
+				HAL_Delay(150);
+				motor_stop();
+			}
+			drive_flag=false;
+		}
   }
 }
 
@@ -295,7 +311,12 @@ void trunc_rle() {
 	int size = fill_lane_data(iter+sizeof(SUFFIX));
 	uart_send_bin(tx_buff,size);
 }
-
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) 
+{
+  HAL_UART_Receive_IT(&huart2, uart_rx_buffer, 1); 
+	HAL_UART_Receive_IT(&huart3, uart_rx_buffer, 1); 
+	drive_flag = true;
+}
 
 void send_delta(){
   int iter = 0;
