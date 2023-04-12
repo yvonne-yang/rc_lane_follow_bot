@@ -5,6 +5,7 @@ import cv2 as cv
 import numpy as np
 from serial import Serial
 import csv
+import threading
 
 PORT = "COM10"
 BAUDRATE = 115200
@@ -69,6 +70,19 @@ def monitor(
     """
     Display images transferred through serial port. Press 'q' to close.
     """
+    #TODO: speed up key presses with multithreading
+    """
+    cv.namedWindow("Motor control")
+    cv.imshow("Motor control",np.zeros((100,100)))
+    while True:
+        char = cv.waitKey(1)
+        if char  == ord("w") or char == ord("a") or char == ord("s") or char == ord("d"):
+           ser.write(char)
+    threading.Thread(target=wasd_control)
+    while True:
+        pass
+    """
+
     prev_frame_ts = None  # keep track of frames per second
     frame = None
 
@@ -103,9 +117,10 @@ def monitor(
             full_update = wait_for_preamble(ser, preamble, delta_preamble)
 
             if full_update:
-                click.echo(
-                    f"Full update (after {partial_frame_counter} partial updates)"
-                )
+                if not quiet:
+                    click.echo(
+                        f"Full update (after {partial_frame_counter} partial updates)"
+                    )
                 partial_frame_counter = 0
             else:
                 if not quiet:
@@ -154,7 +169,7 @@ def monitor(
             frame = new_frame if full_update else frame + new_frame
 
             now = time.time()
-            click.echo(f"Serial monitor processing took {now-proct} s")
+            #click.echo(f"Serial monitor processing took {now-proct} s")
             if prev_frame_ts is not None:
                 try:
                     fps = 1 / (now - prev_frame_ts)
@@ -163,7 +178,7 @@ def monitor(
                     click.echo("FPS too fast to measure")
             prev_frame_ts = now
 
-            frame_w_lane= draw_lane(frame, lane_data)
+            frame_w_lane= draw_lane(frame, lane_data, quiet)
 
             cv.namedWindow("Video Stream", cv.WINDOW_KEEPRATIO)
             cv.imshow("Video Stream", frame_w_lane)
@@ -178,11 +193,23 @@ def monitor(
                 return
 
             # Wait for 'q' to stop the program
-            if cv.waitKey(1) == ord("q"):
+            char = cv.waitKey(1)
+            if char  == ord("w") or char == ord("a") or char == ord("s") or char == ord("d"):
+               num = ser.write(bytearray([char]))
+               click.echo(chr(char).upper())
+            if char == ord("q"):
                 break
 
     cv.destroyAllWindows()
 
+def wasd_control(ser):
+    cv.namedWindow("Motor control")
+    cv.imshow("Motor control",np.zeros((100,100)))
+    while True:
+        char = cv.waitKey(1)
+        if char  == ord("w") or char == ord("a") or char == ord("s") or char == ord("d"):
+           ser.write(char)
+           click.echo(chr(char).upper())
 
 def wait_for_preamble(ser: Serial, preamble: str, partial_preamble: str) -> bool:
     """
@@ -228,7 +255,7 @@ def get_raw_data(ser: Serial, num_bytes: int, suffix: bytes = b"",
 
     return raw_img, lane_data
 
-def draw_lane(frame : np.ndarray, lane_data : bytes) -> np.ndarray:
+def draw_lane(frame : np.ndarray, lane_data : bytes, quiet: bool = False) -> np.ndarray:
     # grayscale to color
     frame = cv.merge([frame, frame, frame])
     topleftx=lane_data[1]
@@ -241,7 +268,9 @@ def draw_lane(frame : np.ndarray, lane_data : bytes) -> np.ndarray:
     botrighty=lane_data[8]
     stop=lane_data[9]
     steer_ang=int.from_bytes(bytes([lane_data[10]]),'big',signed='True')
-    print(topleftx,toplefty,botleftx,botlefty,toprightx,toprighty,botrightx,botrighty,stop,steer_ang)
+    if not quiet:
+        print("topleftx|toplefty|botleftx|botlefty|toprightx|toprighty|botrightx|botrighty|stop|steer_ang")
+        print(topleftx,"|",toplefty,"|",botleftx,"|",botlefty,"|",toprightx,"|",toprighty,"|",botrightx,"|",botrighty,"|",stop,"|",steer_ang)
     if topleftx != 0xff and toplefty != 0xff and botleftx != 0xff and botlefty != 0xff:
         frame = cv.line(frame,(botleftx,botlefty),(topleftx,toplefty), (0,255,0),thickness=1)
     if toprightx != 0xff and toprighty != 0xff and botrightx != 0xff and botrighty != 0xff:
