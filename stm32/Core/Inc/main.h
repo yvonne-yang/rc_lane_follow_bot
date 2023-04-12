@@ -42,6 +42,7 @@ extern "C" {
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
 extern uint8_t dcmi_flag;
+extern uint8_t uart_rx_buffer[10];
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/

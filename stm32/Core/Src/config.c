@@ -334,6 +334,7 @@ void MX_USART2_UART_Init(void)
   huart2.Init.Mode = UART_MODE_TX_RX;
   huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
   huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+	
   if (HAL_UART_Init(&huart2) != HAL_OK)
   {
     Error_Handler();
@@ -531,6 +532,8 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+		HAL_GPIO_TogglePin(LD3_GPIO_Port,LD3_Pin);
+		HAL_Delay(500);
   }
   /* USER CODE END Error_Handler_Debug */
 }
