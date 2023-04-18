@@ -2,7 +2,7 @@ A remote controlled robot car with STM32 microcontroller that
 drives 2 motors with an H-bridge, detects simple lanes, and
 sends a camera feed via Bluetooth. Use WASD for control.
 
-Parts: *STM32-Nucleo board, OV7670 camera module, batteries, [robot car kit](https://l.facebook.com/l.php?u=https%3A%2F%2Fwww.amazon.ca%2Fdp%2FB07DNYQ3PX%3Fref_%3Dcm_sw_r_apin_dp_09XPEA4QFPR8WXB3KS26%26fbclid%3DIwAR2Es9F5nJ0au_UZVhIQtDhIt4j6uwuk1HU4Qz8695tyReclHmcpV_ZWJIk%26th%3D1&h=AT23mDe87YTlFQjSv0jPHp9ko1E5vME0PBpvtXu6NEgxZ2-zuMBkG2JMdPOeX-mnSEujoOSSgVkD2bSgnOF_z_pJtvJIkxfx2PCRsAPKNoR68ZjgA8NZ2thQ1JmFyvJU-HcQA223LdqvN2GuxhZAMw), HC-05 Bluetooth module*
+Parts: *STM32-Nucleo board, OV7670 camera module, 4 AAA batteries, [robot car kit](https://l.facebook.com/l.php?u=https%3A%2F%2Fwww.amazon.ca%2Fdp%2FB07DNYQ3PX%3Fref_%3Dcm_sw_r_apin_dp_09XPEA4QFPR8WXB3KS26%26fbclid%3DIwAR2Es9F5nJ0au_UZVhIQtDhIt4j6uwuk1HU4Qz8695tyReclHmcpV_ZWJIk%26th%3D1&h=AT23mDe87YTlFQjSv0jPHp9ko1E5vME0PBpvtXu6NEgxZ2-zuMBkG2JMdPOeX-mnSEujoOSSgVkD2bSgnOF_z_pJtvJIkxfx2PCRsAPKNoR68ZjgA8NZ2thQ1JmFyvJU-HcQA223LdqvN2GuxhZAMw), HC-05 Bluetooth module*
 
 ![Wiring diagram](https://github.com/yvonne-yang/rc_lane_follow_bot/blob/master/lane_follow_bot_wiring_diagram_img.png)
 
